@@ -1,0 +1,8 @@
+build/
+.qtcreator/
+
+*.log
+*.temp
+*.vcxproj
+*.sln
+.DS_Store
