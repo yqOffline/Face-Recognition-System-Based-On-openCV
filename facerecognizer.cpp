@@ -6,6 +6,9 @@
 
 namespace {
 constexpr int MaxDetectionDimension = 1280;
+constexpr int CloseUpDetectionDimension = 640;
+constexpr float PrimaryScoreThreshold = 0.9f;
+constexpr float ProfileScoreThreshold = 0.85f;
 }
 
 FaceRecognizer::FaceRecognizer(const std::string &detectModelPath,
@@ -37,22 +40,41 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
         return detections;
     }
 
-    // 超大照片直接送入 YuNet 不仅计算量大，也可能超出模型适合的尺度。
-    // 检测时等比例缩小，稍后再把坐标映射回原始高清图。
-    cv::Mat detectionFrame = frame;
-    float detectionScale = 1.0f;
     const int largestDimension = std::max(frame.cols, frame.rows);
-    if (largestDimension > MaxDetectionDimension) {
-        detectionScale = static_cast<float>(MaxDetectionDimension)
-                         / static_cast<float>(largestDimension);
-        cv::resize(frame, detectionFrame, cv::Size(),
-                   detectionScale, detectionScale, cv::INTER_AREA);
-    }
-
-    detector->setInputSize(detectionFrame.size());
-
     cv::Mat faces;
-    detector->detect(detectionFrame, faces);
+    float detectionScale = 1.0f;
+
+    struct DetectionPass {
+        int maximumDimension;
+        float scoreThreshold;
+    };
+    const std::array<DetectionPass, 3> passes{{
+        {MaxDetectionDimension, PrimaryScoreThreshold},
+        {CloseUpDetectionDimension, PrimaryScoreThreshold},
+        {MaxDetectionDimension, ProfileScoreThreshold}
+    }};
+
+    for (const DetectionPass &pass : passes) {
+        detectionScale = std::min(
+            1.0f,
+            static_cast<float>(pass.maximumDimension)
+                / static_cast<float>(largestDimension));
+
+        cv::Mat detectionFrame;
+        if (detectionScale < 1.0f) {
+            cv::resize(frame, detectionFrame, cv::Size(),
+                       detectionScale, detectionScale, cv::INTER_AREA);
+        } else {
+            detectionFrame = frame;
+        }
+
+        detector->setInputSize(detectionFrame.size());
+        detector->setScoreThreshold(pass.scoreThreshold);
+        detector->detect(detectionFrame, faces);
+        if (!faces.empty()) {
+            break;
+        }
+    }
     if (faces.empty()) {
         return detections;
     }
@@ -94,7 +116,8 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
 }
 
 cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,
-                                       const FaceDetection &face)
+                                       const FaceDetection &face,
+                                       cv::Mat *alignedFaceOutput)
 {
     if (frame.empty() || face.faceData.empty() || sface.empty()) {
         return {};
@@ -109,6 +132,9 @@ cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,
     sface->alignCrop(frame, face.faceData, alignedFace);
     if (alignedFace.empty()) {
         return {};
+    }
+    if (alignedFaceOutput) {
+        *alignedFaceOutput = alignedFace.clone();
     }
 
     cv::Mat feature;

@@ -4,13 +4,16 @@
 #include <QDialog>
 
 class FaceDatabase;
+class FaceRecognizer;
 class QLineEdit;
+class QListWidget;
 class QTableWidget;
 
 class PersonManagerDialog : public QDialog
 {
 public:
     explicit PersonManagerDialog(FaceDatabase *database,
+                                 FaceRecognizer *recognizer,
                                  QWidget *parent = nullptr);
 
 private:
@@ -19,6 +22,10 @@ private:
     void editSelectedPerson();
     void deleteSelectedPerson();
     void applyFilter(const QString &text);
+    void loadSamplesForSelectedPerson();
+    void addSamplesToSelectedPerson();
+    void deleteSelectedSample();
+    void selectPersonById(int personId);
     int selectedPersonId() const;
     bool editPersonFields(const QString &title,
                           QString &personCode,
@@ -26,8 +33,10 @@ private:
                           QString &department);
 
     FaceDatabase *database;
+    FaceRecognizer *recognizer;
     QLineEdit *searchEdit;
     QTableWidget *table;
+    QListWidget *sampleList;
 };
 
 #endif // PERSONMANAGERDIALOG_H

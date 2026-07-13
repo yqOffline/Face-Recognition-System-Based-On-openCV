@@ -16,6 +16,25 @@ struct PersonInfo
     QVector<cv::Mat> embeddings;
 };
 
+struct FaceSampleInfo
+{
+    int id = -1;
+    int personId = -1;
+    QString imagePath;
+    QString createdAt;
+};
+
+struct RecognitionLogInfo
+{
+    int id = -1;
+    int personId = -1;
+    QString nameSnapshot;
+    float similarity = 0.0f;
+    QString recognizedAt;
+    QString snapshotPath;
+    QString sourceType;
+};
+
 class FaceDatabase : public QObject
 {
     Q_OBJECT
@@ -32,9 +51,20 @@ public:
     bool deletePerson(int id);
 
     bool findPersonByCode(const QString &personCode, PersonInfo &person);
-    bool addFaceSample(int personId, const cv::Mat &embedding);
+    bool addFaceSample(int personId, const cv::Mat &embedding,
+                       const QString &imagePath = QString(),
+                       int *newSampleId = nullptr);
+    bool deleteFaceSample(int sampleId);
+    QVector<FaceSampleInfo> getFaceSamples(int personId);
+    bool addRecognitionLog(int personId, const QString &nameSnapshot,
+                           float similarity, const QString &snapshotPath,
+                           const QString &sourceType,
+                           int *newLogId = nullptr);
+    QVector<RecognitionLogInfo> getRecentRecognitionLogs(int limit = 200);
+    bool clearRecognitionLogs();
     bool registerFaceSample(const QString &personCode, const QString &name,
                             const QString &department, const cv::Mat &embedding,
+                            const QString &imagePath = QString(),
                             int *personId = nullptr,
                             bool *createdPerson = nullptr);
 

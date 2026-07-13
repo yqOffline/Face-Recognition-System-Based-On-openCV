@@ -27,7 +27,8 @@ public:
     std::vector<FaceDetection> detectFaces(const cv::Mat &frame);
 
     // 根据 YuNet 的 5 个关键点对齐人脸，再提取 128 维 SFace 特征。
-    cv::Mat extractFeature(const cv::Mat &frame, const FaceDetection &face);
+    cv::Mat extractFeature(const cv::Mat &frame, const FaceDetection &face,
+                           cv::Mat *alignedFaceOutput = nullptr);
 
     // 计算两个特征向量的余弦相似度
     static float cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2);

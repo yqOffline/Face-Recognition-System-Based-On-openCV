@@ -132,6 +132,19 @@
      </rect>
     </property>
    </widget>
+   <widget class="QPushButton" name="btnClearLogs">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>580</y>
+      <width>191</width>
+      <height>35</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Clear Logs</string>
+    </property>
+   </widget>
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>

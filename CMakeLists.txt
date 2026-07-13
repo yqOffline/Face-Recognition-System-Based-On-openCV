@@ -30,6 +30,8 @@ set(SOURCES
     facerecognizer.cpp
     facedatabase.cpp
     personmanagerdialog.cpp
+    facesamplestorage.cpp
+    recognitionlogstorage.cpp
 )
 
 set(HEADERS
@@ -37,6 +39,8 @@ set(HEADERS
     facerecognizer.h
     facedatabase.h
     personmanagerdialog.h
+    facesamplestorage.h
+    recognitionlogstorage.h
 )
 
 # ---------- UI 文件 ----------
@@ -84,6 +88,14 @@ if(BUILD_TESTING)
         ${OpenCV_INCLUDE_DIRS}
     )
 
+    add_executable(face_detector_diagnostic
+        tests/face_detector_diagnostic.cpp
+    )
+    target_link_libraries(face_detector_diagnostic PRIVATE ${OpenCV_LIBS})
+    target_include_directories(face_detector_diagnostic PRIVATE
+        ${OpenCV_INCLUDE_DIRS}
+    )
+
     add_test(
         NAME face_detector_single_face
         COMMAND face_detector_smoke_test
@@ -116,6 +128,10 @@ if(BUILD_TESTING)
         tests/face_database_test.cpp
         facedatabase.cpp
         facedatabase.h
+        facesamplestorage.cpp
+        facesamplestorage.h
+        recognitionlogstorage.cpp
+        recognitionlogstorage.h
     )
     target_link_libraries(face_database_test PRIVATE
         Qt6::Core
@@ -152,6 +168,35 @@ if(BUILD_TESTING)
                 "${LARGE_FACE_TEST_IMAGE}"
         )
     endif()
+
+    function(add_face_regression test_name source_file)
+        if(EXISTS "${source_file}")
+            set(copied_image
+                "${CMAKE_CURRENT_BINARY_DIR}/testdata/${test_name}.png")
+            configure_file("${source_file}" "${copied_image}" COPYONLY)
+            add_test(
+                NAME detector_${test_name}
+                COMMAND face_detector_smoke_test
+                    "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
+                    "${copied_image}"
+            )
+            add_test(
+                NAME feature_${test_name}
+                COMMAND face_feature_smoke_test
+                    "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
+                    "${copied_image}"
+            )
+        endif()
+    endfunction()
+
+    add_face_regression(
+        profile_mbappe "${CMAKE_CURRENT_SOURCE_DIR}/images/侧姆巴佩.png")
+    add_face_regression(
+        close_ronaldo "${CMAKE_CURRENT_SOURCE_DIR}/images/泡面罗.png")
+    add_face_regression(
+        front_mbappe "${CMAKE_CURRENT_SOURCE_DIR}/images/正姆巴佩.png")
 endif()
 
 # ---------- 复制模型文件到输出目录 ----------
