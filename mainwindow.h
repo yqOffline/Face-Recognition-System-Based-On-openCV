@@ -2,7 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QHash>
 #include <QTimer>
+#include <QSet>
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include "facerecognizer.h"
@@ -30,6 +32,8 @@ private slots:
 private:
     void displayImage(const cv::Mat &mat);
     QString recognizeFace(const cv::Mat &feature, float &maxSim);
+    bool shouldAppendLog(const QString &identity);
+    void refreshPersonCache();
 
     Ui::MainWindow *ui;
     QTimer *timer;
@@ -39,6 +43,12 @@ private:
     bool isImageMode = false;
     FaceRecognizer *recognizer;
     FaceDatabase *database;
+    QVector<PersonInfo> personCache;
+    QHash<QString, qint64> lastLogTimes;
+    QSet<QString> identitiesInPreviousFrame;
+
+    static constexpr float RecognitionThreshold = 0.363f;
+    static constexpr qint64 LogCooldownMs = 5000;
 };
 
 #endif

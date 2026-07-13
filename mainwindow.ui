@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>600</height>
+    <height>660</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,47 +17,33 @@
    <widget class="QLabel" name="videoLabel">
     <property name="geometry">
      <rect>
-      <x>0</x>
-      <y>50</y>
+      <x>10</x>
+      <y>70</y>
       <width>391</width>
       <height>501</height>
      </rect>
     </property>
     <property name="text">
-     <string>TextLabel</string>
+     <string/>
     </property>
-   </widget>
-   <widget class="QComboBox" name="modeCombo">
-    <property name="geometry">
-     <rect>
-      <x>420</x>
-      <y>90</y>
-      <width>141</width>
-      <height>61</height>
-     </rect>
-    </property>
-    <item>
-     <property name="text">
-      <string>实时摄像头</string>
-     </property>
-    </item>
-    <item>
-     <property name="text">
-      <string>静态图片</string>
-     </property>
-    </item>
    </widget>
    <widget class="QPushButton" name="btnStartStop">
     <property name="geometry">
      <rect>
       <x>420</x>
-      <y>170</y>
-      <width>141</width>
-      <height>61</height>
+      <y>160</y>
+      <width>151</width>
+      <height>71</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>开启摄像头</string>
+     <string>Start Camera</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnLoadImage">
@@ -65,61 +51,104 @@
      <rect>
       <x>420</x>
       <y>250</y>
-      <width>141</width>
-      <height>61</height>
+      <width>151</width>
+      <height>71</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>导入图片</string>
+     <string>Load Image</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnRegister">
     <property name="geometry">
      <rect>
       <x>420</x>
-      <y>330</y>
-      <width>141</width>
-      <height>61</height>
+      <y>340</y>
+      <width>151</width>
+      <height>71</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>注册人脸</string>
+     <string>Register</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnManageDB">
     <property name="geometry">
      <rect>
       <x>420</x>
-      <y>410</y>
-      <width>141</width>
-      <height>61</height>
+      <y>430</y>
+      <width>151</width>
+      <height>71</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>管理数据库</string>
+     <string>Manage People</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>580</x>
-      <y>70</y>
-      <width>151</width>
+      <x>590</x>
+      <y>80</y>
+      <width>191</width>
       <height>41</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>16</pointsize>
+     </font>
+    </property>
     <property name="text">
-     <string>识别日志</string>
+     <string>Identify Logs</string>
     </property>
    </widget>
    <widget class="QListWidget" name="logList">
     <property name="geometry">
      <rect>
-      <x>580</x>
+      <x>590</x>
       <y>130</y>
-      <width>181</width>
-      <height>381</height>
+      <width>191</width>
+      <height>441</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>0</y>
+      <width>771</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Comic Sans MS</family>
+      <pointsize>22</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Face Recognition System , based on openCV</string>
     </property>
    </widget>
   </widget>

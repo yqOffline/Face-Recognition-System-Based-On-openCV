@@ -1,8 +1,10 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "personmanagerdialog.h"
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDateTime>
+#include <QDebug>
 #include <QInputDialog>
 #include <QCoreApplication>
 #include <opencv2/imgproc.hpp>
@@ -18,7 +20,10 @@ MainWindow::MainWindow(QWidget *parent)
         (modelDir + "face_detection_yunet_2023mar.onnx").toStdString(),
         (modelDir + "face_recognition_sface_2021dec.onnx").toStdString());
     database = new FaceDatabase(this);
-    database->init("faces.db");
+    if (!database->init("faces.db")) {
+        QMessageBox::critical(this, tr("数据库错误"), database->lastError());
+    }
+    refreshPersonCache();
 
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::processFrame);
@@ -38,34 +43,43 @@ MainWindow::~MainWindow()
 
 void MainWindow::onStartStop()
 {
-    if (ui->modeCombo->currentIndex() == 0) {
-        if (!isCameraRunning) {
-            cap.open(0);
-            if (!cap.isOpened()) {
-                QMessageBox::critical(this, "错误", "无法打开摄像头");
-                return;
-            }
-            timer->start(30);
-            isCameraRunning = true;
-            ui->btnStartStop->setText("停止摄像头");
-        } else {
-            timer->stop();
-            cap.release();
-            isCameraRunning = false;
-            ui->btnStartStop->setText("开始摄像头");
-            ui->videoLabel->setText("视频画面");
+    if (!isCameraRunning) {
+        cap.open(0);
+        if (!cap.isOpened()) {
+            QMessageBox::critical(this, "ERROR!", "Fail to Open the Cam.!");
+            return;
         }
+        isImageMode = false;
+        timer->start(30);
+        isCameraRunning = true;
+        ui->btnStartStop->setText("Stop Camera");
+    } else {
+        timer->stop();
+        cap.release();
+        isCameraRunning = false;
+        identitiesInPreviousFrame.clear();
+        ui->btnStartStop->setText("Start Camera");
+        ui->videoLabel->setText("VIDEO");
     }
 }
 
 void MainWindow::onLoadImage()
 {
-    QString fileName = QFileDialog::getOpenFileName(this, "选择图片", "", "Images (*.png *.jpg *.bmp)");
+    QString fileName = QFileDialog::getOpenFileName(this, "Chose picture", "", "Images (*.png *.jpg *.bmp)");
     if (fileName.isEmpty()) return;
     cv::Mat img = cv::imread(fileName.toLocal8Bit().toStdString());
     if (img.empty()) {
-        QMessageBox::warning(this, "错误", "无法加载图片");
+        QMessageBox::warning(this, "ERROR", "Fail to load Images!");
         return;
+    }
+
+    // 静态图片和摄像头共用同一个显示区域。载入图片时先停止摄像头，
+    // 防止下一次定时器触发后摄像头画面立刻覆盖刚载入的图片。
+    if (isCameraRunning) {
+        timer->stop();
+        cap.release();
+        isCameraRunning = false;
+        ui->btnStartStop->setText("Start Camera");
     }
     currentFrame = img.clone();
     isImageMode = true;
@@ -84,15 +98,19 @@ void MainWindow::processFrame()
     }
 
     cv::Mat displayFrame = currentFrame.clone();
-    std::vector<cv::Rect> faces = recognizer->detectFaces(displayFrame);
-    QVector<PersonInfo> persons = database->getAllPersons();
+    std::vector<FaceDetection> faces = recognizer->detectFaces(displayFrame);
+    QSet<QString> recognizedThisFrame;
 
-    for (const auto &rect : faces) {
+    for (const auto &face : faces) {
+        const cv::Rect &rect = face.box;
         cv::Rect safeRect = rect & cv::Rect(0,0,displayFrame.cols,displayFrame.rows);
         if (safeRect.area() == 0) continue;
 
-        cv::Mat faceROI = displayFrame(safeRect);
-        cv::Mat feature = recognizer->extractFeature(faceROI);
+        cv::Mat feature = recognizer->extractFeature(currentFrame, face);
+        if (feature.empty()) {
+            cv::rectangle(displayFrame, rect, cv::Scalar(0, 0, 255), 2);
+            continue;
+        }
 
         float maxSim = 0.0f;
         QString identity = recognizeFace(feature, maxSim);
@@ -102,28 +120,54 @@ void MainWindow::processFrame()
         cv::putText(displayFrame, label, cv::Point(rect.x, rect.y-5),
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0,255,0), 2);
 
-        if (!identity.isEmpty() && identity != "陌生人") {
-            QString logEntry = QDateTime::currentDateTime().toString("hh:mm:ss") + " - " + identity;
-            ui->logList->insertItem(0, logEntry);
+        if (!identity.isEmpty() && identity != "Stranger") {
+            recognizedThisFrame.insert(identity);
+            const bool justAppeared = !identitiesInPreviousFrame.contains(identity);
+            if (justAppeared && shouldAppendLog(identity)) {
+                QString logEntry = QDateTime::currentDateTime().toString("hh:mm:ss") + " - " + identity;
+                ui->logList->insertItem(0, logEntry);
+                while (ui->logList->count() > 200) {
+                    delete ui->logList->takeItem(ui->logList->count() - 1);
+                }
+            }
         }
     }
+    identitiesInPreviousFrame = recognizedThisFrame;
     displayImage(displayFrame);
 }
 
 QString MainWindow::recognizeFace(const cv::Mat &feature, float &maxSim)
 {
     maxSim = 0.0f;
-    QString bestName = "陌生人";
-    QVector<PersonInfo> persons = database->getAllPersons();
-    for (const auto &p : persons) {
-        float sim = FaceRecognizer::cosineSimilarity(feature, p.embedding);
-        if (sim > maxSim) {
-            maxSim = sim;
-            bestName = p.name;
+    QString bestName = "Stranger";
+    for (const PersonInfo &person : personCache) {
+        for (const cv::Mat &embedding : person.embeddings) {
+            const float sim = FaceRecognizer::cosineSimilarity(feature, embedding);
+            if (sim > maxSim) {
+                maxSim = sim;
+                bestName = person.name;
+            }
         }
     }
-    if (maxSim < 0.45f) bestName = "陌生人";
+    if (maxSim < RecognitionThreshold) bestName = "Stranger";
     return bestName;
+}
+
+bool MainWindow::shouldAppendLog(const QString &identity)
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const qint64 lastTime = lastLogTimes.value(identity, 0);
+    if (lastTime > 0 && now - lastTime < LogCooldownMs) {
+        return false;
+    }
+
+    lastLogTimes.insert(identity, now);
+    return true;
+}
+
+void MainWindow::refreshPersonCache()
+{
+    personCache = database->getAllPersons();
 }
 
 void MainWindow::displayImage(const cv::Mat &mat)
@@ -137,46 +181,110 @@ void MainWindow::displayImage(const cv::Mat &mat)
 void MainWindow::onRegister()
 {
     if (currentFrame.empty()) {
-        QMessageBox::information(this, "提示", "请先获取一帧图像");
+        QMessageBox::information(this, "WARN", "Please obtain a frame of image");
         return;
     }
-    std::vector<cv::Rect> faces = recognizer->detectFaces(currentFrame);
-    if (faces.empty()) {
-        QMessageBox::information(this, "提示", "未检测到人脸");
-        return;
+    std::vector<FaceDetection> faces = recognizer->detectFaces(currentFrame);
+    qDebug() << "Detected faces for registration:" << faces.size();
+    for (const auto &face : faces)
+    {
+        const cv::Rect &rect = face.box;
+        qDebug() << "  Rect:" << rect.x << rect.y << rect.width << rect.height
+                 << "confidence:" << face.confidence;
     }
-    bool ok;
-    QString name = QInputDialog::getText(this, "注册", "输入姓名：", QLineEdit::Normal, "", &ok);
-    if (!ok || name.isEmpty()) return;
 
-    cv::Rect faceRect = faces[0] & cv::Rect(0,0,currentFrame.cols,currentFrame.rows);
-    if (faceRect.area() == 0) {
-        QMessageBox::warning(this, "错误", "人脸区域无效，请重新获取图像");
+    if (faces.empty()) {
+        QMessageBox::information(this, "WARN", "No faces");
         return;
     }
-    cv::Mat faceROI = currentFrame(faceRect);
-    cv::Mat feature = recognizer->extractFeature(faceROI);
-    if (database->addPerson(name, feature))
-        QMessageBox::information(this, "成功", "人脸注册成功！");
-    else
-        QMessageBox::warning(this, "错误", "数据库写入失败");
+    if (faces.size() > 1) {
+        QMessageBox::information(this, "WARN", "Please keep exactly one face in the image");
+        return;
+    }
+    const cv::Rect faceRect = faces[0].box
+                              & cv::Rect(0,0,currentFrame.cols,currentFrame.rows);
+    if (faceRect.empty()) {
+        QMessageBox::warning(this, "ERROR", "Invalid Face region!Please re-capture the image");
+        return;
+    }
+    cv::Mat feature = recognizer->extractFeature(currentFrame, faces[0]);
+    if (feature.empty()) {
+        QMessageBox::warning(this, "ERROR", "Fail to align face or extract feature");
+        return;
+    }
+
+    bool ok = false;
+    const QString personCode = QInputDialog::getText(
+        this, tr("注册人脸"), tr("请输入人员编号："),
+        QLineEdit::Normal, QString(), &ok).trimmed();
+    if (!ok || personCode.isEmpty()) {
+        return;
+    }
+
+    PersonInfo existingPerson;
+    const bool personExists = database->findPersonByCode(personCode, existingPerson);
+    if (!personExists && !database->lastError().isEmpty()) {
+        QMessageBox::warning(this, tr("查询失败"), database->lastError());
+        return;
+    }
+
+    QString name;
+    QString department;
+    if (personExists) {
+        const auto answer = QMessageBox::question(
+            this,
+            tr("追加人脸样本"),
+            tr("编号 %1 已属于“%2”。是否把当前人脸作为该人员的新样本？")
+                .arg(personCode, existingPerson.name));
+        if (answer != QMessageBox::Yes) {
+            return;
+        }
+        name = existingPerson.name;
+        department = existingPerson.department;
+    } else {
+        name = QInputDialog::getText(
+            this, tr("注册人脸"), tr("请输入姓名："),
+            QLineEdit::Normal, QString(), &ok).trimmed();
+        if (!ok || name.isEmpty()) {
+            return;
+        }
+        department = QInputDialog::getText(
+            this, tr("注册人脸"), tr("请输入部门（可留空）："),
+            QLineEdit::Normal, QString(), &ok).trimmed();
+        if (!ok) {
+            return;
+        }
+    }
+
+    bool createdPerson = false;
+    if (!database->registerFaceSample(personCode, name, department, feature,
+                                      nullptr, &createdPerson)) {
+        QMessageBox::warning(this, tr("注册失败"), database->lastError());
+        return;
+    }
+
+    refreshPersonCache();
+    const PersonInfo updatedPerson = [&]() {
+        for (const PersonInfo &person : personCache) {
+            if (person.personCode == personCode) {
+                return person;
+            }
+        }
+        return PersonInfo{};
+    }();
+    QMessageBox::information(
+        this,
+        tr("注册成功"),
+        createdPerson
+            ? tr("人员“%1”注册成功，当前有1个人脸样本。").arg(name)
+            : tr("已为“%1”追加人脸样本，当前共有%2个样本。")
+                  .arg(name)
+                  .arg(updatedPerson.embeddings.size()));
 }
 
 void MainWindow::onManageDB()
 {
-    QVector<PersonInfo> persons = database->getAllPersons();
-    QStringList names;
-    for (const auto &p : persons)
-        names << QString::number(p.id) + ": " + p.name;
-    if (names.isEmpty()) {
-        QMessageBox::information(this, "数据库", "暂无人员");
-        return;
-    }
-    bool ok;
-    QString item = QInputDialog::getItem(this, "管理数据库", "选择删除的人员", names, 0, false, &ok);
-    if (ok && !item.isEmpty()) {
-        int id = item.split(":").first().toInt();
-        if (database->deletePerson(id))
-            QMessageBox::information(this, "成功", "已删除");
-    }
+    PersonManagerDialog dialog(database, this);
+    dialog.exec();
+    refreshPersonCache();
 }
