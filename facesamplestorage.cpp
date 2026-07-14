@@ -1,9 +1,10 @@
 #include "facesamplestorage.h"
+#include "appdatapaths.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QUuid>
 #include <opencv2/imgcodecs.hpp>
 #include <vector>
@@ -12,7 +13,7 @@ namespace {
 
 QString storageDirectory()
 {
-    return QCoreApplication::applicationDirPath() + "/face_samples";
+    return AppDataPaths::faceSamplesDirectory();
 }
 
 }
@@ -61,10 +62,22 @@ QString FaceSampleStorage::saveAlignedFace(const cv::Mat &alignedFace,
     const QString fileName = QString("sample_%1.jpg")
                                  .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     const QString filePath = QDir(targetDirectory).filePath(fileName);
-    if (!cv::imwrite(filePath.toLocal8Bit().constData(), alignedFace,
-                     {cv::IMWRITE_JPEG_QUALITY, 95})) {
+    std::vector<unsigned char> encoded;
+    if (!cv::imencode(".jpg", alignedFace, encoded,
+                      {cv::IMWRITE_JPEG_QUALITY, 95})) {
         if (errorMessage) {
             *errorMessage = QObject::tr("无法保存人脸样本图片：%1").arg(filePath);
+        }
+        return {};
+    }
+    QSaveFile output(filePath);
+    if (!output.open(QIODevice::WriteOnly)
+        || output.write(reinterpret_cast<const char *>(encoded.data()),
+                        static_cast<qint64>(encoded.size()))
+               != static_cast<qint64>(encoded.size())
+        || !output.commit()) {
+        if (errorMessage) {
+            *errorMessage = QObject::tr("无法写入人脸样本图片：%1").arg(filePath);
         }
         return {};
     }
@@ -80,8 +93,7 @@ QString FaceSampleStorage::resolveStoredPath(const QString &storedPath)
     if (info.isAbsolute()) {
         return QDir::cleanPath(storedPath);
     }
-    return QDir::cleanPath(
-        QDir(QCoreApplication::applicationDirPath()).filePath(storedPath));
+    return AppDataPaths::resolveStoredPath(storedPath);
 }
 
 bool FaceSampleStorage::deleteStoredImage(const QString &filePath)

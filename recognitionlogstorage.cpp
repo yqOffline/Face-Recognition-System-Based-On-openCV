@@ -1,17 +1,19 @@
 #include "recognitionlogstorage.h"
+#include "appdatapaths.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QUuid>
 #include <opencv2/imgcodecs.hpp>
+#include <vector>
 
 namespace {
 
 QString storageDirectory()
 {
-    return QCoreApplication::applicationDirPath() + "/recognition_snapshots";
+    return AppDataPaths::recognitionSnapshotsDirectory();
 }
 
 }
@@ -56,10 +58,23 @@ QString RecognitionLogStorage::saveSnapshot(const cv::Mat &frame,
                                  .arg(QUuid::createUuid().toString(
                                      QUuid::WithoutBraces));
     const QString absolutePath = QDir(targetDirectory).filePath(fileName);
-    if (!cv::imwrite(absolutePath.toLocal8Bit().constData(), frame(safeBox),
-                     {cv::IMWRITE_JPEG_QUALITY, 90})) {
+    std::vector<unsigned char> encoded;
+    if (!cv::imencode(".jpg", frame(safeBox), encoded,
+                      {cv::IMWRITE_JPEG_QUALITY, 90})) {
         if (errorMessage) {
             *errorMessage = QObject::tr("Cannot save recognition snapshot: %1")
+                                .arg(absolutePath);
+        }
+        return {};
+    }
+    QSaveFile output(absolutePath);
+    if (!output.open(QIODevice::WriteOnly)
+        || output.write(reinterpret_cast<const char *>(encoded.data()),
+                        static_cast<qint64>(encoded.size()))
+               != static_cast<qint64>(encoded.size())
+        || !output.commit()) {
+        if (errorMessage) {
+            *errorMessage = QObject::tr("Cannot write recognition snapshot: %1")
                                 .arg(absolutePath);
         }
         return {};
@@ -76,8 +91,7 @@ QString RecognitionLogStorage::resolveStoredPath(const QString &storedPath)
     if (info.isAbsolute()) {
         return QDir::cleanPath(storedPath);
     }
-    return QDir::cleanPath(
-        QDir(QCoreApplication::applicationDirPath()).filePath(storedPath));
+    return AppDataPaths::resolveStoredPath(storedPath);
 }
 
 bool RecognitionLogStorage::deleteStoredSnapshot(const QString &storedPath)

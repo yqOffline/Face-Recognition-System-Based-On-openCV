@@ -1,6 +1,7 @@
 #include "facedatabase.h"
 #include "facesamplestorage.h"
 #include "recognitionlogstorage.h"
+#include "appdatapaths.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -16,6 +17,8 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to create temporary test directory.\n";
         return 1;
     }
+    qputenv("FACEVISION_DATA_DIR",
+            QFile::encodeName(temporaryDirectory.filePath("appdata")));
 
     FaceDatabase database;
     if (!database.init(temporaryDirectory.filePath("test_faces.db"))) {

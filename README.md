@@ -1,8 +1,7 @@
 # FaceVision：基于 Qt 与 OpenCV 的人脸识别系统
 
-FaceVision 是一个使用 **C++17、Qt 6、OpenCV 和 SQLite** 开发的桌面人脸识别应用。系统支持从摄像头视频流或本地静态图片中检测人脸，提取 SFace 人脸特征，并与已注册人员的多个人脸样本进行相似度比较。同时提供人员管理、样本管理、识别日志和抓拍查看功能。
+FaceVision 是一个使用 **C++17、Qt 6.11.1、OpenCV 4.10.0 和 SQLite** 开发的桌面人脸识别应用。系统支持从摄像头视频流或本地静态图片中检测人脸，提取 SFace 人脸特征，并与已注册人员的多个人脸样本进行相似度比较。同时提供人员管理、样本管理、识别日志和抓拍查看功能。
 
-本项目为计算机科学与技术专业编程实战课程个人项目。
 
 ## 功能特性
 
@@ -85,7 +84,9 @@ cosine(A, B) = (A · B) / (||A|| × ||B||)
 
 ## 数据库设计
 
-程序首次启动时自动创建 `faces.db`，包含三张主要数据表：
+程序首次启动时会在当前用户的可写应用数据目录中创建 `faces.db`，包含三张主要数据表。
+
+数据库和用户图片不写入源码目录或可执行文件目录，因此从Qt Creator、命令行或安装目录启动时都会使用同一份数据，也不会因为安装目录只读而保存失败。
 
 ### `people`
 
@@ -104,25 +105,28 @@ people 1 ───── N face_samples
 people 1 ───── N recognition_logs
 ```
 
-图片文件不直接写入 SQLite，而是保存在程序目录下：
+图片文件不直接写入 SQLite，而是保存在上述用户数据目录下：
 
 ```text
 face_samples/              已注册人员的对齐人脸缩略图
 recognition_snapshots/     识别日志抓拍
 ```
 
+旧版本若曾把 `faces.db` 和图片目录保存在当前工作目录或可执行文件目录，升级后的程序会在首次启动时将缺失数据复制到新的用户数据目录。
+
 ## 项目结构
 
 ```text
 FaceRecognition6666/
-├─ CMakeLists.txt                  CMake 构建配置
+├─ CMakeLists.txt                 CMake 构建配置
 ├─ main.cpp                       程序入口
 ├─ mainwindow.h/.cpp/.ui          主窗口、摄像头、识别、注册和日志
 ├─ facerecognizer.h/.cpp          YuNet 检测和 SFace 特征提取
 ├─ facedatabase.h/.cpp            SQLite 数据库访问
 ├─ personmanagerdialog.h/.cpp     人员和人脸样本管理
 ├─ facesamplestorage.h/.cpp       样本图片存储
-├─ recognitionlogstorage.h/.cpp  识别抓拍存储
+├─ recognitionlogstorage.h/.cpp   识别抓拍存储
+├─ appdatapath.h/.cpp             多设备兼容能力提升
 ├─ models/                        YuNet 与 SFace ONNX 模型
 ├─ images/                        可选的本地测试图片（程序不依赖）
 └─ tests/                         自动化测试程序
@@ -132,7 +136,7 @@ FaceRecognition6666/
 
 本项目当前开发和验证环境：
 
-- Windows 11 64 位
+- Windows 11 64 bit
 - Qt 6.11.1，MSVC 2022 64-bit Kit
 - CMake 3.16
 - Visual Studio 2022 / MSVC
@@ -164,10 +168,16 @@ models/face_recognition_sface_2021dec.onnx
 3. 使用 Qt Creator 打开根目录的 `CMakeLists.txt`。
 4. 选择 `Desktop Qt 6.11.1 MSVC2022 64bit` Kit。
 5. 在项目的 CMake 配置中设置本机 `OpenCV_DIR`，例如 OpenCV 安装目录下的 `build/x64/vc16/lib`。
-6. 选择 Release 或 Debug 配置并构建项目。
+6. 选择 Release 配置并构建项目。
 7. 运行 `FaceRecognition6666`。
 
 项目源码中不包含开发者电脑的OpenCV绝对路径。不同电脑通过CMake缓存或Qt Creator配置自己的路径，无需修改 `CMakeLists.txt`。
+
+Qt Kit、OpenCV和编译器ABI必须匹配：
+
+- 使用 `Qt MSVC 2022 64-bit` Kit时，应使用可供MSVC链接的64位OpenCV；
+- 使用MinGW Kit时，需要重新准备MinGW版本的OpenCV，不能直接链接MSVC版本；
+- Qt、OpenCV和项目必须保持相同架构，例如全部为x64。
 
 ### 使用命令行
 
@@ -193,6 +203,8 @@ build/Release/FaceRecognition6666.exe
 ```
 
 CMake 会在构建后自动把模型目录和 OpenCV DLL 复制到可执行程序目录。
+
+在Qt Creator内运行时，Qt会为程序提供Qt运行环境。如果需要把编译后的程序复制给没有安装Qt的用户，还必须使用Qt自带的 `windeployqt` 部署Qt Widgets、平台插件和SQLite驱动；这属于发布部署步骤，不影响在已配置Qt环境的电脑上打开源码运行。
 
 ## 使用说明
 
@@ -279,6 +291,8 @@ cmake -S . -B build `
 - **事务注册**：创建人员和保存首个人脸样本作为一个数据库事务执行。
 - **事件式日志**：记录“人员进入画面”，而不是为摄像头每一帧写日志。
 - **安全文件清理**：删除前检查目标文件是否位于程序管理的存储目录中。
+- **可移植数据目录**：使用 `QStandardPaths::AppLocalDataLocation` 保存数据库和用户图片，避免依赖工作目录或安装权限。
+- **Unicode路径保存**：OpenCV先把JPG编码到内存，再由 `QSaveFile` 写入路径，可处理中文用户名和目录。
 
 ## 已知限制与改进方向
 

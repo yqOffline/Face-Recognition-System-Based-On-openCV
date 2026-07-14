@@ -16,10 +16,16 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 # ---------- 查找 Qt6 ----------
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Sql)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Sql)
 
 # ---------- 查找 OpenCV ----------
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4.5 REQUIRED COMPONENTS
+    core
+    imgproc
+    imgcodecs
+    videoio
+    objdetect
+)
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 
 # ---------- 源文件 ----------
@@ -31,6 +37,7 @@ set(SOURCES
     personmanagerdialog.cpp
     facesamplestorage.cpp
     recognitionlogstorage.cpp
+    appdatapaths.cpp
 )
 
 set(HEADERS
@@ -40,6 +47,7 @@ set(HEADERS
     personmanagerdialog.h
     facesamplestorage.h
     recognitionlogstorage.h
+    appdatapaths.h
 )
 
 # ---------- UI 文件 ----------
@@ -85,6 +93,8 @@ if(BUILD_TESTING)
         facesamplestorage.h
         recognitionlogstorage.cpp
         recognitionlogstorage.h
+        appdatapaths.cpp
+        appdatapaths.h
     )
     target_link_libraries(face_database_test PRIVATE
         Qt6::Core
@@ -153,11 +163,23 @@ if(BUILD_TESTING)
     endif()
 endif()
 
-# ---------- 复制模型文件到输出目录 ----------
+# ---------- 验证并复制只读模型资源 ----------
+set(FACE_MODEL_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
+)
+foreach(model_file IN LISTS FACE_MODEL_FILES)
+    if(NOT EXISTS "${model_file}")
+        message(FATAL_ERROR "Required face model is missing: ${model_file}")
+    endif()
+endforeach()
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_CURRENT_SOURCE_DIR}/models"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/models"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/models"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${FACE_MODEL_FILES}
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/models"
     COMMENT "Copying model files to output directory"
 )
 

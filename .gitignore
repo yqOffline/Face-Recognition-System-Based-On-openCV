@@ -4,6 +4,9 @@ build/
 .agents/
 .doc_work/
 deliverables/
+faces.db
+face_samples/
+recognition_snapshots/
 *.log
 *.temp
 *.vcxproj

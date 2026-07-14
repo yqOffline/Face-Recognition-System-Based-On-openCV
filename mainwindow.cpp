@@ -3,6 +3,7 @@
 #include "facesamplestorage.h"
 #include "recognitionlogstorage.h"
 #include "personmanagerdialog.h"
+#include "appdatapaths.h"
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDateTime>
@@ -36,7 +37,8 @@ MainWindow::MainWindow(QWidget *parent)
         (modelDir + "face_detection_yunet_2023mar.onnx").toStdString(),
         (modelDir + "face_recognition_sface_2021dec.onnx").toStdString());
     database = new FaceDatabase(this);
-    if (!database->init("faces.db")) {
+    AppDataPaths::migrateLegacyData();
+    if (!database->init(AppDataPaths::databasePath())) {
         QMessageBox::critical(this, tr("数据库错误"), database->lastError());
     }
     refreshPersonCache();
@@ -404,12 +406,17 @@ void MainWindow::setupModernUi()
 
 void MainWindow::processFrame()
 {
-    if (isCameraRunning) {
+    if (isCameraRunning)
+    {
         cap >> currentFrame;
         if (currentFrame.empty()) return;
-    } else if (isImageMode) {
+    }
+    else if (isImageMode)
+    {
         isImageMode = false;
-    } else {
+    }
+    else
+    {
         return;
     }
 
@@ -566,7 +573,8 @@ void MainWindow::onLogDoubleClicked(QListWidgetItem *item)
 
 void MainWindow::onClearLogs()
 {
-    if (ui->logList->count() == 0) {
+    if (ui->logList->count() == 0)
+    {
         return;
     }
     if (QMessageBox::question(
