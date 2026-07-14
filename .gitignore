@@ -1,6 +1,9 @@
 build/
 .qtcreator/
-
+.tests/
+.agents/
+.doc_work/
+deliverables/
 *.log
 *.temp
 *.vcxproj

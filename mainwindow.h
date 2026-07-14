@@ -35,8 +35,7 @@ private slots:
 
 private:
     void displayImage(const cv::Mat &mat);
-    QString recognizeFace(const cv::Mat &feature, float &maxSim,
-                          int &bestPersonId);
+    QString recognizeFace(const cv::Mat &feature, float &maxSim,int &bestPersonId);
     bool shouldAppendLog(int personId);
     void refreshPersonCache();
     void loadRecognitionLogs();

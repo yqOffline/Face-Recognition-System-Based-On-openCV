@@ -9,7 +9,10 @@
 #include <QDebug>
 #include <QInputDialog>
 #include <QCoreApplication>
+#include <QApplication>
 #include <QDialog>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
@@ -61,16 +64,48 @@ MainWindow::~MainWindow()
 void MainWindow::onStartStop()
 {
     if (!isCameraRunning) {
-        cap.open(0);
+        ui->btnStartStop->setEnabled(false);
+        ui->btnStartStop->setText(tr("正在连接..."));
+        statusBar()->showMessage(tr("正在连接摄像头，请稍候..."));
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        // 先把“正在连接”绘制出来，再执行可能耗时的摄像头初始化。
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+        QElapsedTimer openTimer;
+        openTimer.start();
+
+        // Windows 下明确指定后端，避免 CAP_ANY 逐个探测后端造成额外等待。
+        // DirectShow 通常打开较快；不可用时回退到 Media Foundation。
+        bool opened = cap.open(0, cv::CAP_DSHOW);
+        if (!opened) {
+            cap.release();
+            opened = cap.open(0, cv::CAP_MSMF);
+        }
+
+        QApplication::restoreOverrideCursor();
+        ui->btnStartStop->setEnabled(true);
         if (!cap.isOpened()) {
-            QMessageBox::critical(this, "ERROR!", "Fail to Open the Cam.!");
+            ui->btnStartStop->setText(tr("启动摄像头"));
+            statusBar()->showMessage(tr("摄像头连接失败"), 5000);
+            QMessageBox::critical(this, tr("摄像头错误"),
+                                  tr("无法打开摄像头，请检查设备是否被其他程序占用。"));
             return;
         }
+
+        // 640×480 足以进行实时人脸识别，同时比高分辨率处理更快。
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, 640);
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, 480);
+        cap.set(cv::CAP_PROP_FPS, 30);
+        cap.set(cv::CAP_PROP_BUFFERSIZE, 1);
+        qDebug() << "Camera opened in" << openTimer.elapsed() << "ms, backend:"
+                 << QString::fromStdString(cap.getBackendName());
+
         isImageMode = false;
-        timer->start(30);
         isCameraRunning = true;
+        timer->start(33);
         ui->btnStartStop->setText(tr("停止摄像头"));
-        statusBar()->showMessage(tr("摄像头运行中"));
+        statusBar()->showMessage(
+            tr("摄像头运行中 · 启动耗时 %1 ms").arg(openTimer.elapsed()), 5000);
     } else {
         timer->stop();
         cap.release();

@@ -4,29 +4,25 @@
 #include <stdexcept>
 #include <utility>
 
-namespace {
+namespace   //运用匿名命名空间，只对此文件可见
+{
 constexpr int MaxDetectionDimension = 1280;
 constexpr int CloseUpDetectionDimension = 640;
 constexpr float PrimaryScoreThreshold = 0.9f;
 constexpr float ProfileScoreThreshold = 0.85f;
 }
 
-FaceRecognizer::FaceRecognizer(const std::string &detectModelPath,
-                               const std::string &recogModelPath)
+FaceRecognizer::FaceRecognizer(const std::string &detectModelPath,const std::string &recogModelPath)
 {
-    detector = cv::FaceDetectorYN::create(
-        detectModelPath,
-        "",
-        cv::Size(320, 320),
-        0.9f,  // 检测置信度阈值
-        0.3f,  // 非极大值抑制阈值
-        5000);
+    detector = cv::FaceDetectorYN::create(detectModelPath,"",cv::Size(320, 320),0.9f, 0.3f,  5000);
     sface = cv::FaceRecognizerSF::create(recogModelPath, "");
 
-    if (detector.empty()) {
+    if (detector.empty())
+    {
         throw std::runtime_error("Failed to create YuNet face detector.");
     }
-    if (sface.empty()) {
+    if (sface.empty())
+    {
         throw std::runtime_error("Failed to load SFace recognition model.");
     }
 }
@@ -36,55 +32,65 @@ FaceRecognizer::~FaceRecognizer() {}
 std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
 {
     std::vector<FaceDetection> detections;
-    if (frame.empty() || detector.empty()) {
+    if (frame.empty() || detector.empty())
+    {
         return detections;
     }
 
     const int largestDimension = std::max(frame.cols, frame.rows);
     cv::Mat faces;
-    float detectionScale = 1.0f;
+    float detectionScale = 1.0f; //如果后续尺寸过大，需要进行缩放
 
-    struct DetectionPass {
+    struct DetectionPass
+    {
         int maximumDimension;
         float scoreThreshold;
     };
-    const std::array<DetectionPass, 3> passes{{
+
+    const std::array<DetectionPass, 3> passes
+    {{
         {MaxDetectionDimension, PrimaryScoreThreshold},
         {CloseUpDetectionDimension, PrimaryScoreThreshold},
         {MaxDetectionDimension, ProfileScoreThreshold}
     }};
 
-    for (const DetectionPass &pass : passes) {
-        detectionScale = std::min(
-            1.0f,
-            static_cast<float>(pass.maximumDimension)
-                / static_cast<float>(largestDimension));
+    for (const DetectionPass &pass : passes)
+    {
+        detectionScale = std::min(1.0f,static_cast<float>(pass.maximumDimension)/ static_cast<float>(largestDimension));
 
         cv::Mat detectionFrame;
-        if (detectionScale < 1.0f) {
-            cv::resize(frame, detectionFrame, cv::Size(),
-                       detectionScale, detectionScale, cv::INTER_AREA);
-        } else {
+        if (detectionScale < 1.0f)
+        {
+            cv::resize(frame, detectionFrame, cv::Size(),detectionScale, detectionScale, cv::INTER_AREA);//INTER_AREA，一种缩放图片的方法
+        }
+        else
+        {
             detectionFrame = frame;
         }
 
         detector->setInputSize(detectionFrame.size());
         detector->setScoreThreshold(pass.scoreThreshold);
         detector->detect(detectionFrame, faces);
-        if (!faces.empty()) {
+        if (!faces.empty())
+        {
             break;
         }
     }
-    if (faces.empty()) {
+
+    if (faces.empty())
+    {
         return detections;
     }
 
     const cv::Rect imageBounds(0, 0, frame.cols, frame.rows);
-    for (int row = 0; row < faces.rows; ++row) {
+    for (int row = 0; row < faces.rows; ++row)
+    {
         cv::Mat originalFaceData = faces.row(row).clone();
-        if (detectionScale != 1.0f) {
+        if (detectionScale != 1.0f)
+        {
             float *coordinates = originalFaceData.ptr<float>(0);
-            for (int column = 0; column < 14; ++column) {
+            for (int column = 0; column < 14; ++column)
+            {
                 coordinates[column] /= detectionScale;
             }
         }

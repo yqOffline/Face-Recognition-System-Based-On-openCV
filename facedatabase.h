@@ -13,7 +13,7 @@ struct PersonInfo
     QString personCode;
     QString name;
     QString department;
-    QVector<cv::Mat> embeddings;
+    QVector<cv::Mat> embeddings; //人脸特征
 };
 
 struct FaceSampleInfo
@@ -80,4 +80,4 @@ private:
     cv::Mat bytesToEmbedding(const QByteArray &data) const;
 };
 
-#endif // FACEDATABASE_H
+#endif

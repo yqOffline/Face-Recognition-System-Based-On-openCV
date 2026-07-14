@@ -1,36 +1,29 @@
 #ifndef FACERECOGNIZER_H
 #define FACERECOGNIZER_H
 
-#include <opencv2/core.hpp>
-#include <opencv2/objdetect.hpp>
+#include <opencv2/core.hpp> //提供cv::Mat,cv::Rect,cv::Point2f
+#include <opencv2/objdetect.hpp>  //提供FaceDetectorYN,FacerecognierSF
 #include <array>
 #include <vector>
 
-// YuNet 对一张人脸的完整检测结果。
-// 除了矩形框，SFace 在后续进行人脸对齐时还需要 5 个关键点。
-struct FaceDetection
+struct FaceDetection //人脸识别检测单元
 {
     cv::Rect box;
-    std::array<cv::Point2f, 5> landmarks;
+    std::array<cv::Point2f, 5> landmarks;//5个人脸关键点：左眼，右眼，鼻尖，左嘴角，右嘴角
     float confidence = 0.0f;
-    cv::Mat faceData; // OpenCV FaceDetectorYN 返回的 1x15、CV_32F 数据
+    cv::Mat faceData; //存放10个人脸特征（5个关键点的2个维度）
 };
 
 class FaceRecognizer
 {
 public:
-    FaceRecognizer(const std::string &detectModelPath,
-                   const std::string &recogModelPath);
+    FaceRecognizer(const std::string &detectModelPath,const std::string &recogModelPath);//需要两个模型的路径：YuNet检测模型，SFace识别模型
     ~FaceRecognizer();
 
-    // 检测人脸，返回矩形框、5 个关键点、置信度和原始检测数据。
     std::vector<FaceDetection> detectFaces(const cv::Mat &frame);
 
-    // 根据 YuNet 的 5 个关键点对齐人脸，再提取 128 维 SFace 特征。
-    cv::Mat extractFeature(const cv::Mat &frame, const FaceDetection &face,
-                           cv::Mat *alignedFaceOutput = nullptr);
+    cv::Mat extractFeature(const cv::Mat &frame, const FaceDetection &face, cv::Mat *alignedFaceOutput = nullptr);
 
-    // 计算两个特征向量的余弦相似度
     static float cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2);
 
 private:
@@ -38,4 +31,4 @@ private:
     cv::Ptr<cv::FaceRecognizerSF> sface;
 };
 
-#endif // FACERECOGNIZER_H
+#endif

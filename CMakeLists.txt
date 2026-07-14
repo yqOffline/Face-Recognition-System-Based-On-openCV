@@ -19,7 +19,6 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Sql)
 
 # ---------- 查找 OpenCV ----------
-set(OpenCV_DIR "D:/openCV/opencv_4.10.0/opencv/build/x64/vc16/lib")
 find_package(OpenCV REQUIRED)
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 
@@ -66,64 +65,18 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
 
-# ---------- 自动化检测回归测试 ----------
-# 将中文文件名的测试图片复制为 ASCII 文件名，避免 Windows 路径编码干扰测试结果。
+# ---------- 自动化测试 ----------
+# 数据库测试不依赖任何外部图片，默认可以直接运行。
+# 人脸图片测试属于开发阶段的可选回归测试，只有显式开启并提供测试图片时才创建，
+# 因此正式项目的配置、编译和运行都不依赖 images 目录。
 include(CTest)
+option(ENABLE_FACE_IMAGE_TESTS
+       "Enable face detector/feature tests that require user-provided images"
+       OFF)
+set(FACE_TEST_IMAGES "" CACHE STRING
+    "Semicolon-separated face image paths used only by optional tests")
+
 if(BUILD_TESTING)
-    set(FACE_TEST_IMAGE "${CMAKE_CURRENT_BINARY_DIR}/testdata/single_face.png")
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/images/单人.png"
-        "${FACE_TEST_IMAGE}"
-        COPYONLY
-    )
-
-    add_executable(face_detector_smoke_test
-        tests/face_detector_smoke_test.cpp
-        facerecognizer.cpp
-        facerecognizer.h
-    )
-    target_link_libraries(face_detector_smoke_test PRIVATE ${OpenCV_LIBS})
-    target_include_directories(face_detector_smoke_test PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${OpenCV_INCLUDE_DIRS}
-    )
-
-    add_executable(face_detector_diagnostic
-        tests/face_detector_diagnostic.cpp
-    )
-    target_link_libraries(face_detector_diagnostic PRIVATE ${OpenCV_LIBS})
-    target_include_directories(face_detector_diagnostic PRIVATE
-        ${OpenCV_INCLUDE_DIRS}
-    )
-
-    add_test(
-        NAME face_detector_single_face
-        COMMAND face_detector_smoke_test
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
-            "${FACE_TEST_IMAGE}"
-            "${CMAKE_CURRENT_BINARY_DIR}/face_detector_result.png"
-    )
-
-    add_executable(face_feature_smoke_test
-        tests/face_feature_smoke_test.cpp
-        facerecognizer.cpp
-        facerecognizer.h
-    )
-    target_link_libraries(face_feature_smoke_test PRIVATE ${OpenCV_LIBS})
-    target_include_directories(face_feature_smoke_test PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${OpenCV_INCLUDE_DIRS}
-    )
-
-    add_test(
-        NAME face_feature_single_face
-        COMMAND face_feature_smoke_test
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
-            "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
-            "${FACE_TEST_IMAGE}"
-    )
-
     add_executable(face_database_test
         tests/face_database_test.cpp
         facedatabase.cpp
@@ -144,59 +97,60 @@ if(BUILD_TESTING)
     )
     add_test(NAME face_database_crud COMMAND face_database_test)
 
-    # 4500x4500 的证件照用于防止超大图片再次出现漏检。
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/images/yq.jpg")
-        set(LARGE_FACE_TEST_IMAGE
-            "${CMAKE_CURRENT_BINARY_DIR}/testdata/large_face.jpg")
-        configure_file(
-            "${CMAKE_CURRENT_SOURCE_DIR}/images/yq.jpg"
-            "${LARGE_FACE_TEST_IMAGE}"
-            COPYONLY
-        )
-        add_test(
-            NAME face_detector_large_face
-            COMMAND face_detector_smoke_test
-                "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
-                "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
-                "${LARGE_FACE_TEST_IMAGE}"
-        )
-        add_test(
-            NAME face_feature_large_face
-            COMMAND face_feature_smoke_test
-                "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
-                "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
-                "${LARGE_FACE_TEST_IMAGE}"
-        )
-    endif()
+    if(ENABLE_FACE_IMAGE_TESTS)
+        if(NOT FACE_TEST_IMAGES)
+            message(FATAL_ERROR
+                "ENABLE_FACE_IMAGE_TESTS is ON, but FACE_TEST_IMAGES is empty. "
+                "Pass one or more image paths with -DFACE_TEST_IMAGES=...")
+        endif()
 
-    function(add_face_regression test_name source_file)
-        if(EXISTS "${source_file}")
-            set(copied_image
-                "${CMAKE_CURRENT_BINARY_DIR}/testdata/${test_name}.png")
-            configure_file("${source_file}" "${copied_image}" COPYONLY)
+        add_executable(face_detector_smoke_test
+            tests/face_detector_smoke_test.cpp
+            facerecognizer.cpp
+            facerecognizer.h
+        )
+        target_link_libraries(face_detector_smoke_test PRIVATE ${OpenCV_LIBS})
+        target_include_directories(face_detector_smoke_test PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${OpenCV_INCLUDE_DIRS}
+        )
+
+        add_executable(face_feature_smoke_test
+            tests/face_feature_smoke_test.cpp
+            facerecognizer.cpp
+            facerecognizer.h
+        )
+        target_link_libraries(face_feature_smoke_test PRIVATE ${OpenCV_LIBS})
+        target_include_directories(face_feature_smoke_test PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${OpenCV_INCLUDE_DIRS}
+        )
+
+        set(face_test_index 0)
+        foreach(source_image IN LISTS FACE_TEST_IMAGES)
+            if(NOT EXISTS "${source_image}")
+                message(FATAL_ERROR "Face test image does not exist: ${source_image}")
+            endif()
+            math(EXPR face_test_index "${face_test_index} + 1")
+            get_filename_component(image_extension "${source_image}" EXT)
+            set(copied_image "${CMAKE_CURRENT_BINARY_DIR}/testdata/face_${face_test_index}${image_extension}")
+            configure_file("${source_image}" "${copied_image}" COPYONLY)
             add_test(
-                NAME detector_${test_name}
+                NAME face_detector_${face_test_index}
                 COMMAND face_detector_smoke_test
                     "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
                     "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
                     "${copied_image}"
             )
             add_test(
-                NAME feature_${test_name}
+                NAME face_feature_${face_test_index}
                 COMMAND face_feature_smoke_test
                     "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
                     "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
                     "${copied_image}"
             )
-        endif()
-    endfunction()
-
-    add_face_regression(
-        profile_mbappe "${CMAKE_CURRENT_SOURCE_DIR}/images/侧姆巴佩.png")
-    add_face_regression(
-        close_ronaldo "${CMAKE_CURRENT_SOURCE_DIR}/images/泡面罗.png")
-    add_face_regression(
-        front_mbappe "${CMAKE_CURRENT_SOURCE_DIR}/images/正姆巴佩.png")
+        endforeach()
+    endif()
 endif()
 
 # ---------- 复制模型文件到输出目录 ----------
@@ -207,11 +161,34 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying model files to output directory"
 )
 
-# ---------- 复制 OpenCV DLL 到输出目录 ----------
-set(OpenCV_DLL_DIR "D:/openCV/opencv_4.10.0/opencv/build/x64/vc16/bin")
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-    "${OpenCV_DLL_DIR}/opencv_world4100.dll"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-    COMMENT "Copying OpenCV DLL"
-)
+# ---------- Windows 下部署 OpenCV 运行库 ----------
+# 不写死开发者电脑路径。标准 OpenCV Windows 包通常把 bin 放在
+# OpenCV_DIR 的相邻目录；非标准安装可通过 -DOpenCV_RUNTIME_DIR=... 指定。
+set(OpenCV_RUNTIME_DIR "" CACHE PATH
+    "Optional directory containing OpenCV runtime DLLs")
+set(_opencv_runtime_dir "${OpenCV_RUNTIME_DIR}")
+if(WIN32 AND NOT _opencv_runtime_dir)
+    get_filename_component(_opencv_default_runtime_dir
+        "${OpenCV_DIR}/../bin" ABSOLUTE)
+    if(EXISTS "${_opencv_default_runtime_dir}")
+        set(_opencv_runtime_dir "${_opencv_default_runtime_dir}")
+    endif()
+endif()
+
+if(WIN32 AND _opencv_runtime_dir)
+    file(GLOB _opencv_runtime_dlls
+        "${_opencv_runtime_dir}/opencv_world*.dll"
+        "${_opencv_runtime_dir}/opencv_videoio_ffmpeg*.dll")
+    if(_opencv_runtime_dlls)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${_opencv_runtime_dlls}
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            COMMENT "Copying OpenCV runtime DLLs"
+        )
+    else()
+        message(WARNING
+            "No OpenCV runtime DLLs found in ${_opencv_runtime_dir}. "
+            "Add the OpenCV bin directory to PATH or set OpenCV_RUNTIME_DIR.")
+    endif()
+endif()
