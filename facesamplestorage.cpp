@@ -1,6 +1,5 @@
 #include "facesamplestorage.h"
 #include "appdatapaths.h"
-
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -9,21 +8,23 @@
 #include <opencv2/imgcodecs.hpp>
 #include <vector>
 
-namespace {
-
-QString storageDirectory()
+namespace
 {
-    return AppDataPaths::faceSamplesDirectory();
-}
+
+    QString storageDirectory()
+    {
+        return AppDataPaths::faceSamplesDirectory();
+    }
 
 }
 
-cv::Mat FaceSampleStorage::loadImage(const QString &filePath,
-                                     QString *errorMessage)
+cv::Mat FaceSampleStorage::loadImage(const QString &filePath, QString *errorMessage)
 {
     QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        if (errorMessage) {
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        if (errorMessage)
+        {
             *errorMessage = QObject::tr("无法读取图片：%1").arg(filePath);
         }
         return {};
@@ -33,17 +34,19 @@ cv::Mat FaceSampleStorage::loadImage(const QString &filePath,
     const auto *begin = reinterpret_cast<const unsigned char *>(bytes.constData());
     const std::vector<unsigned char> encoded(begin, begin + bytes.size());
     cv::Mat image = cv::imdecode(encoded, cv::IMREAD_COLOR);
-    if (image.empty() && errorMessage) {
+    if (image.empty() && errorMessage)
+    {
         *errorMessage = QObject::tr("图片格式无法解析：%1").arg(filePath);
     }
     return image;
 }
 
-QString FaceSampleStorage::saveAlignedFace(const cv::Mat &alignedFace,
-                                           QString *errorMessage)
+QString FaceSampleStorage::saveAlignedFace(const cv::Mat &alignedFace,QString *errorMessage)
 {
-    if (alignedFace.empty()) {
-        if (errorMessage) {
+    if (alignedFace.empty())
+    {
+        if (errorMessage)
+        {
             *errorMessage = QObject::tr("没有可保存的对齐人脸。 ");
         }
         return {};
@@ -51,32 +54,29 @@ QString FaceSampleStorage::saveAlignedFace(const cv::Mat &alignedFace,
 
     QDir directory;
     const QString targetDirectory = storageDirectory();
-    if (!directory.mkpath(targetDirectory)) {
-        if (errorMessage) {
-            *errorMessage = QObject::tr("无法创建人脸样本目录：%1")
-                                .arg(targetDirectory);
+    if (!directory.mkpath(targetDirectory))
+    {
+        if (errorMessage)
+        {
+            *errorMessage = QObject::tr("无法创建人脸样本目录：%1").arg(targetDirectory);
         }
         return {};
     }
 
-    const QString fileName = QString("sample_%1.jpg")
-                                 .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    const QString fileName = QString("sample_%1.jpg").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     const QString filePath = QDir(targetDirectory).filePath(fileName);
     std::vector<unsigned char> encoded;
-    if (!cv::imencode(".jpg", alignedFace, encoded,
-                      {cv::IMWRITE_JPEG_QUALITY, 95})) {
-        if (errorMessage) {
+    if (!cv::imencode(".jpg", alignedFace, encoded,{cv::IMWRITE_JPEG_QUALITY, 95})) {
+        if (errorMessage)
+        {
             *errorMessage = QObject::tr("无法保存人脸样本图片：%1").arg(filePath);
         }
         return {};
     }
     QSaveFile output(filePath);
-    if (!output.open(QIODevice::WriteOnly)
-        || output.write(reinterpret_cast<const char *>(encoded.data()),
-                        static_cast<qint64>(encoded.size()))
-               != static_cast<qint64>(encoded.size())
-        || !output.commit()) {
-        if (errorMessage) {
+    if (!output.open(QIODevice::WriteOnly)|| output.write(reinterpret_cast<const char *>(encoded.data()),static_cast<qint64>(encoded.size()))!= static_cast<qint64>(encoded.size())|| !output.commit()) {
+        if (errorMessage)
+        {
             *errorMessage = QObject::tr("无法写入人脸样本图片：%1").arg(filePath);
         }
         return {};
@@ -86,11 +86,13 @@ QString FaceSampleStorage::saveAlignedFace(const cv::Mat &alignedFace,
 
 QString FaceSampleStorage::resolveStoredPath(const QString &storedPath)
 {
-    if (storedPath.isEmpty()) {
+    if (storedPath.isEmpty())
+    {
         return {};
     }
     const QFileInfo info(storedPath);
-    if (info.isAbsolute()) {
+    if (info.isAbsolute())
+    {
         return QDir::cleanPath(storedPath);
     }
     return AppDataPaths::resolveStoredPath(storedPath);
@@ -98,15 +100,15 @@ QString FaceSampleStorage::resolveStoredPath(const QString &storedPath)
 
 bool FaceSampleStorage::deleteStoredImage(const QString &filePath)
 {
-    if (filePath.isEmpty()) {
+    if (filePath.isEmpty())
+    {
         return true;
     }
 
-    const QString root = QDir::fromNativeSeparators(
-                             QDir::cleanPath(storageDirectory())) + "/";
-    const QString target = QDir::fromNativeSeparators(
-        resolveStoredPath(filePath));
-    if (!target.startsWith(root, Qt::CaseInsensitive)) {
+    const QString root = QDir::fromNativeSeparators(QDir::cleanPath(storageDirectory())) + "/";
+    const QString target = QDir::fromNativeSeparators(resolveStoredPath(filePath));
+    if (!target.startsWith(root, Qt::CaseInsensitive))
+    {
         return false;
     }
     return !QFile::exists(target) || QFile::remove(target);

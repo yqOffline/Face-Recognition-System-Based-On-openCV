@@ -23,9 +23,7 @@
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
 
-PersonManagerDialog::PersonManagerDialog(FaceDatabase *database,
-                                         FaceRecognizer *recognizer,
-                                         QWidget *parent)
+PersonManagerDialog::PersonManagerDialog(FaceDatabase *database,FaceRecognizer *recognizer,QWidget *parent)
     : QDialog(parent),
       database(database),
       recognizer(recognizer),
@@ -42,8 +40,7 @@ PersonManagerDialog::PersonManagerDialog(FaceDatabase *database,
     searchEdit->setMinimumHeight(44);
 
     table->setColumnCount(5);
-    table->setHorizontalHeaderLabels(
-        {tr("ID"), tr("人员编号"), tr("姓名"), tr("部门"), tr("人脸样本数")});
+    table->setHorizontalHeaderLabels({tr("数据库编号"), tr("人员编号"), tr("姓名"), tr("部门"), tr("人脸样本数")});
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -72,9 +69,7 @@ PersonManagerDialog::PersonManagerDialog(FaceDatabase *database,
     addButton->setProperty("primary", true);
     deleteButton->setProperty("danger", true);
     deleteSampleButton->setProperty("danger", true);
-    for (QPushButton *button : {addButton, editButton, deleteButton,
-                                addSampleButton, deleteSampleButton,
-                                closeButton}) {
+    for (QPushButton *button : {addButton, editButton, deleteButton, addSampleButton, deleteSampleButton, closeButton}) {
         button->setMinimumHeight(40);
         button->setCursor(Qt::PointingHandCursor);
     }
@@ -186,24 +181,15 @@ PersonManagerDialog::PersonManagerDialog(FaceDatabase *database,
         }
     )");
 
-    connect(searchEdit, &QLineEdit::textChanged,
-            this, [this](const QString &text) { applyFilter(text); });
-    connect(addButton, &QPushButton::clicked,
-            this, [this] { addPerson(); });
-    connect(editButton, &QPushButton::clicked,
-            this, [this] { editSelectedPerson(); });
-    connect(deleteButton, &QPushButton::clicked,
-            this, [this] { deleteSelectedPerson(); });
+    connect(searchEdit, &QLineEdit::textChanged, this, [this](const QString &text) { applyFilter(text); });
+    connect(addButton, &QPushButton::clicked, this, [this] { addPerson(); });
+    connect(editButton, &QPushButton::clicked,this, [this] { editSelectedPerson(); });
+    connect(deleteButton, &QPushButton::clicked,this, [this] { deleteSelectedPerson(); });
     connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);
-    connect(table, &QTableWidget::cellDoubleClicked,
-            this, [this](int, int) { editSelectedPerson(); });
-    connect(table, &QTableWidget::itemSelectionChanged,
-            this, [this] { loadSamplesForSelectedPerson(); });
-    connect(addSampleButton, &QPushButton::clicked,
-            this, [this] { addSamplesToSelectedPerson(); });
-    connect(deleteSampleButton, &QPushButton::clicked,
-            this, [this] { deleteSelectedSample(); });
-
+    connect(table, &QTableWidget::cellDoubleClicked,this, [this](int, int) { editSelectedPerson(); });
+    connect(table, &QTableWidget::itemSelectionChanged, this, [this] { loadSamplesForSelectedPerson(); });
+    connect(addSampleButton, &QPushButton::clicked, this, [this] { addSamplesToSelectedPerson(); });
+    connect(deleteSampleButton, &QPushButton::clicked,this, [this] { deleteSelectedSample(); });
     reloadPeople();
 }
 
@@ -212,14 +198,14 @@ void PersonManagerDialog::reloadPeople()
     const QVector<PersonInfo> persons = database->getAllPersons();
     table->setRowCount(persons.size());
 
-    for (int row = 0; row < persons.size(); ++row) {
+    for (int row = 0; row < persons.size(); ++row)
+    {
         const PersonInfo &person = persons[row];
         table->setItem(row, 0, new QTableWidgetItem(QString::number(person.id)));
         table->setItem(row, 1, new QTableWidgetItem(person.personCode));
         table->setItem(row, 2, new QTableWidgetItem(person.name));
         table->setItem(row, 3, new QTableWidgetItem(person.department));
-        table->setItem(row, 4,
-                       new QTableWidgetItem(QString::number(person.embeddings.size())));
+        table->setItem(row, 4,new QTableWidgetItem(QString::number(person.embeddings.size())));
     }
 
     applyFilter(searchEdit->text());
@@ -230,11 +216,13 @@ void PersonManagerDialog::addPerson()
     QString personCode;
     QString name;
     QString department;
-    if (!editPersonFields(tr("新增人员"), personCode, name, department)) {
+    if (!editPersonFields(tr("新增人员"), personCode, name, department))
+    {
         return;
     }
 
-    if (!database->addPerson(personCode, name, department)) {
+    if (!database->addPerson(personCode, name, department))
+    {
         QMessageBox::warning(this, tr("新增失败"), database->lastError());
         return;
     }
@@ -245,7 +233,8 @@ void PersonManagerDialog::editSelectedPerson()
 {
     const int row = table->currentRow();
     const int personId = selectedPersonId();
-    if (row < 0 || personId < 0) {
+    if (row < 0 || personId < 0)
+    {
         QMessageBox::information(this, tr("提示"), tr("请先选择一名人员。"));
         return;
     }
@@ -253,11 +242,10 @@ void PersonManagerDialog::editSelectedPerson()
     QString personCode = table->item(row, 1)->text();
     QString name = table->item(row, 2)->text();
     QString department = table->item(row, 3)->text();
-    if (!editPersonFields(tr("修改人员信息"), personCode, name, department)) {
-        return;
-    }
+    if (!editPersonFields(tr("修改人员信息"), personCode, name, department)) return ;
 
-    if (!database->updatePerson(personId, personCode, name, department)) {
+    if (!database->updatePerson(personId, personCode, name, department))
+    {
         QMessageBox::warning(this, tr("修改失败"), database->lastError());
         return;
     }
@@ -268,21 +256,18 @@ void PersonManagerDialog::deleteSelectedPerson()
 {
     const int row = table->currentRow();
     const int personId = selectedPersonId();
-    if (row < 0 || personId < 0) {
+    if (row < 0 || personId < 0)
+    {
         QMessageBox::information(this, tr("提示"), tr("请先选择一名人员。"));
         return;
     }
 
     const QString name = table->item(row, 2)->text();
-    const auto answer = QMessageBox::question(
-        this,
-        tr("确认删除"),
-        tr("确定删除“%1”吗？该人员的所有人脸样本也会被删除。").arg(name));
-    if (answer != QMessageBox::Yes) {
-        return;
-    }
+    const auto answer = QMessageBox::question(this,tr("确认删除"),tr("确定删除“%1”吗？该人员的所有人脸样本也会被删除。").arg(name));
+    if (answer != QMessageBox::Yes) return ;
 
-    if (!database->deletePerson(personId)) {
+    if (!database->deletePerson(personId))
+    {
         QMessageBox::warning(this, tr("删除失败"), database->lastError());
         return;
     }
@@ -292,9 +277,11 @@ void PersonManagerDialog::deleteSelectedPerson()
 void PersonManagerDialog::applyFilter(const QString &text)
 {
     const QString keyword = text.trimmed();
-    for (int row = 0; row < table->rowCount(); ++row) {
+    for (int row = 0; row < table->rowCount(); ++row)
+    {
         bool matches = keyword.isEmpty();
-        for (int column = 1; !matches && column <= 3; ++column) {
+        for (int column = 1; !matches && column <= 3; ++column)
+        {
             const QTableWidgetItem *item = table->item(row, column);
             matches = item && item->text().contains(keyword, Qt::CaseInsensitive);
         }
@@ -306,26 +293,28 @@ void PersonManagerDialog::loadSamplesForSelectedPerson()
 {
     sampleList->clear();
     const int personId = selectedPersonId();
-    if (personId < 0) {
+    if (personId < 0)
+    {
         return;
     }
 
     const QVector<FaceSampleInfo> samples = database->getFaceSamples(personId);
-    for (const FaceSampleInfo &sample : samples) {
+    for (const FaceSampleInfo &sample : samples)
+    {
         auto *item = new QListWidgetItem;
         item->setData(Qt::UserRole, sample.id);
         item->setData(Qt::UserRole + 1, sample.imagePath);
-        item->setText(tr("样本 #%1\n%2")
-                          .arg(sample.id)
-                          .arg(sample.createdAt));
+        item->setText(tr("样本 #%1\n%2").arg(sample.id).arg(sample.createdAt));
 
-        const QString resolvedPath = FaceSampleStorage::resolveStoredPath(
-            sample.imagePath);
+        const QString resolvedPath = FaceSampleStorage::resolveStoredPath(sample.imagePath);
         const QPixmap preview(resolvedPath);
-        if (!preview.isNull()) {
+        if (!preview.isNull())
+        {
             item->setIcon(QIcon(preview));
             item->setToolTip(resolvedPath);
-        } else {
+        }
+        else
+        {
             item->setText(tr("样本 #%1\n无预览").arg(sample.id));
             item->setToolTip(tr("这是升级前保存的特征，没有对应缩略图。"));
         }
@@ -336,57 +325,50 @@ void PersonManagerDialog::loadSamplesForSelectedPerson()
 void PersonManagerDialog::addSamplesToSelectedPerson()
 {
     const int personId = selectedPersonId();
-    if (personId < 0) {
+    if (personId < 0)
+    {
         QMessageBox::information(this, tr("提示"), tr("请先选择一名人员。"));
         return;
     }
 
-    const QStringList filePaths = QFileDialog::getOpenFileNames(
-        this,
-        tr("选择人脸样本图片"),
-        QString(),
-        tr("图片 (*.png *.jpg *.jpeg *.bmp)"));
-    if (filePaths.isEmpty()) {
-        return;
-    }
+    const QStringList filePaths = QFileDialog::getOpenFileNames(this,tr("选择人脸样本图片"),tr("图片 (*.png *.jpg *.jpeg *.bmp)"));
+    if (filePaths.isEmpty()) return ;
 
     int successCount = 0;
     QStringList failures;
-    for (const QString &filePath : filePaths) {
+    for (const QString &filePath : filePaths)
+    {
         QString error;
         const cv::Mat image = FaceSampleStorage::loadImage(filePath, &error);
-        if (image.empty()) {
+        if (image.empty())
+        {
             failures << tr("%1：%2").arg(QFileInfo(filePath).fileName(), error);
             continue;
         }
 
         const std::vector<FaceDetection> faces = recognizer->detectFaces(image);
-        if (faces.size() != 1) {
-            failures << tr("%1：检测到%2张脸，要求恰好1张")
-                            .arg(QFileInfo(filePath).fileName())
-                            .arg(faces.size());
+        if (faces.size() != 1) { failures << tr("%1：检测到%2张脸，要求恰好1张").arg(QFileInfo(filePath).fileName()).arg(faces.size());
             continue;
         }
 
         cv::Mat alignedFace;
-        const cv::Mat feature = recognizer->extractFeature(
-            image, faces.front(), &alignedFace);
-        if (feature.empty() || alignedFace.empty()) {
-            failures << tr("%1：人脸对齐或特征提取失败")
-                            .arg(QFileInfo(filePath).fileName());
+        const cv::Mat feature = recognizer->extractFeature(image, faces.front(), &alignedFace);
+        if (feature.empty() || alignedFace.empty())
+        {
+            failures << tr("%1：人脸对齐或特征提取失败").arg(QFileInfo(filePath).fileName());
             continue;
         }
 
-        const QString storedPath = FaceSampleStorage::saveAlignedFace(
-            alignedFace, &error);
-        if (storedPath.isEmpty()) {
+        const QString storedPath = FaceSampleStorage::saveAlignedFace(alignedFace, &error);
+        if (storedPath.isEmpty())
+        {
             failures << tr("%1：%2").arg(QFileInfo(filePath).fileName(), error);
             continue;
         }
-        if (!database->addFaceSample(personId, feature, storedPath)) {
+        if (!database->addFaceSample(personId, feature, storedPath))
+        {
             FaceSampleStorage::deleteStoredImage(storedPath);
-            failures << tr("%1：%2")
-                            .arg(QFileInfo(filePath).fileName(), database->lastError());
+            failures << tr("%1：%2").arg(QFileInfo(filePath).fileName(), database->lastError());
             continue;
         }
         ++successCount;
@@ -397,7 +379,8 @@ void PersonManagerDialog::addSamplesToSelectedPerson()
     loadSamplesForSelectedPerson();
 
     QString summary = tr("成功增加%1个人脸样本。").arg(successCount);
-    if (!failures.isEmpty()) {
+    if (!failures.isEmpty())
+    {
         summary += tr("\n\n以下图片未加入：\n%1").arg(failures.join("\n"));
     }
     QMessageBox::information(this, tr("样本导入结果"), summary);
@@ -406,21 +389,18 @@ void PersonManagerDialog::addSamplesToSelectedPerson()
 void PersonManagerDialog::deleteSelectedSample()
 {
     QListWidgetItem *item = sampleList->currentItem();
-    if (!item) {
+    if (!item)
+    {
         QMessageBox::information(this, tr("提示"), tr("请先选择一张人脸样本。"));
         return;
     }
 
     const int sampleId = item->data(Qt::UserRole).toInt();
     const int personId = selectedPersonId();
-    const auto answer = QMessageBox::question(
-        this, tr("确认删除"),
-        tr("确定删除样本 #%1 吗？删除后该特征将不再参与识别。")
-            .arg(sampleId));
-    if (answer != QMessageBox::Yes) {
-        return;
-    }
-    if (!database->deleteFaceSample(sampleId)) {
+    const auto answer = QMessageBox::question(this, tr("确认删除"),tr("确定删除样本 #%1 吗？删除后该特征将不再参与识别。").arg(sampleId));
+    if (answer != QMessageBox::Yes) return ;
+    if (!database->deleteFaceSample(sampleId))
+    {
         QMessageBox::warning(this, tr("删除失败"), database->lastError());
         return;
     }
@@ -432,9 +412,11 @@ void PersonManagerDialog::deleteSelectedSample()
 
 void PersonManagerDialog::selectPersonById(int personId)
 {
-    for (int row = 0; row < table->rowCount(); ++row) {
+    for (int row = 0; row < table->rowCount(); ++row)
+    {
         const QTableWidgetItem *idItem = table->item(row, 0);
-        if (idItem && idItem->text().toInt() == personId) {
+        if (idItem && idItem->text().toInt() == personId)
+        {
             table->selectRow(row);
             return;
         }
@@ -444,16 +426,14 @@ void PersonManagerDialog::selectPersonById(int personId)
 int PersonManagerDialog::selectedPersonId() const
 {
     const int row = table->currentRow();
-    if (row < 0 || !table->item(row, 0)) {
+    if (row < 0 || !table->item(row, 0))
+    {
         return -1;
     }
     return table->item(row, 0)->text().toInt();
 }
 
-bool PersonManagerDialog::editPersonFields(const QString &title,
-                                           QString &personCode,
-                                           QString &name,
-                                           QString &department)
+bool PersonManagerDialog::editPersonFields(const QString &title,QString &personCode,QString &name,QString &department)
 {
     QDialog dialog(this);
     dialog.setWindowTitle(title);
@@ -467,8 +447,9 @@ bool PersonManagerDialog::editPersonFields(const QString &title,
     formLayout->addRow(tr("姓名："), nameEdit);
     formLayout->addRow(tr("部门："), departmentEdit);
 
-    auto *buttons = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("确定"));
+    buttons->button(QDialogButtonBox::Cancel)->setText(tr("取消"));
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
@@ -476,16 +457,16 @@ bool PersonManagerDialog::editPersonFields(const QString &title,
     layout->addLayout(formLayout);
     layout->addWidget(buttons);
 
-    while (dialog.exec() == QDialog::Accepted) {
-        if (!codeEdit->text().trimmed().isEmpty()
-            && !nameEdit->text().trimmed().isEmpty()) {
+    while (dialog.exec() == QDialog::Accepted)
+    {
+        if (!codeEdit->text().trimmed().isEmpty() && !nameEdit->text().trimmed().isEmpty())
+        {
             personCode = codeEdit->text().trimmed();
             name = nameEdit->text().trimmed();
             department = departmentEdit->text().trimmed();
             return true;
         }
-        QMessageBox::information(&dialog, tr("信息不完整"),
-                                 tr("人员编号和姓名不能为空。"));
+        QMessageBox::information(&dialog, tr("信息不完整"),tr("人员编号和姓名不能为空。"));
     }
     return false;
 }

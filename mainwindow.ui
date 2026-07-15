@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>FaceVision · 智能人脸识别系统</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QLabel" name="videoLabel">
@@ -43,7 +43,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Start Camera</string>
+     <string>启动摄像头</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnLoadImage">
@@ -62,7 +62,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Load Image</string>
+     <string>导入图片</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnRegister">
@@ -81,7 +81,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Register</string>
+     <string>注册人脸</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnManageDB">
@@ -100,7 +100,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Manage People</string>
+     <string>人员管理</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_2">
@@ -119,7 +119,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Identify Logs</string>
+     <string>识别记录</string>
     </property>
    </widget>
    <widget class="QListWidget" name="logList">
@@ -142,7 +142,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Clear Logs</string>
+     <string>清空记录</string>
     </property>
    </widget>
    <widget class="QLabel" name="label">
@@ -161,7 +161,7 @@
      </font>
     </property>
     <property name="text">
-     <string>Face Recognition System , based on openCV</string>
+     <string>基于 OpenCV 的智能人脸识别系统</string>
     </property>
    </widget>
   </widget>

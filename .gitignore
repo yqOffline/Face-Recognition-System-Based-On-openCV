@@ -7,6 +7,9 @@ deliverables/
 faces.db
 face_samples/
 recognition_snapshots/
+ppt/
+.ppt_build/
+images/
 *.log
 *.temp
 *.vcxproj

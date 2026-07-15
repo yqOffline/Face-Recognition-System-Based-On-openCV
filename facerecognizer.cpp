@@ -19,11 +19,11 @@ FaceRecognizer::FaceRecognizer(const std::string &detectModelPath,const std::str
 
     if (detector.empty())
     {
-        throw std::runtime_error("Failed to create YuNet face detector.");
+        throw std::runtime_error("无法创建 YuNet 人脸检测器。");
     }
     if (sface.empty())
     {
-        throw std::runtime_error("Failed to load SFace recognition model.");
+        throw std::runtime_error("无法加载 SFace 人脸识别模型。");
     }
 }
 
@@ -96,23 +96,19 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
         }
         const float *values = originalFaceData.ptr<float>(0);
 
-        cv::Rect box(
-            cvRound(values[0]),
-            cvRound(values[1]),
-            cvRound(values[2]),
-            cvRound(values[3]));
+        cv::Rect box(cvRound(values[0]),cvRound(values[1]),cvRound(values[2]), cvRound(values[3]));
         box &= imageBounds;
-        if (box.empty()) {
+        if (box.empty())
+        {
             continue;
         }
 
         FaceDetection detection;
         detection.box = box;
         detection.confidence = values[14];
-        for (int point = 0; point < 5; ++point) {
-            detection.landmarks[point] = cv::Point2f(
-                values[4 + point * 2],
-                values[5 + point * 2]);
+        for (int point = 0; point < 5; ++point)
+        {
+            detection.landmarks[point] = cv::Point2f(values[4 + point * 2],values[5 + point * 2]);
         }
         detection.faceData = originalFaceData;
         detections.push_back(std::move(detection));
@@ -121,11 +117,10 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
     return detections;
 }
 
-cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,
-                                       const FaceDetection &face,
-                                       cv::Mat *alignedFaceOutput)
+cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,const FaceDetection &face, cv::Mat *alignedFaceOutput)
 {
-    if (frame.empty() || face.faceData.empty() || sface.empty()) {
+    if (frame.empty() || face.faceData.empty() || sface.empty())
+    {
         return {};
     }
     if (face.faceData.rows != 1 || face.faceData.cols != 15
@@ -133,23 +128,25 @@ cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,
         return {};
     }
 
-    // alignCrop 根据双眼、鼻尖和嘴角把脸旋转、缩放到标准姿态。
     cv::Mat alignedFace;
     sface->alignCrop(frame, face.faceData, alignedFace);
-    if (alignedFace.empty()) {
+    if (alignedFace.empty())
+    {
         return {};
     }
-    if (alignedFaceOutput) {
+    if (alignedFaceOutput)
+    {
         *alignedFaceOutput = alignedFace.clone();
     }
 
     cv::Mat feature;
     sface->feature(alignedFace, feature);
-    if (feature.empty()) {
+    if (feature.empty())
+    {
         return {};
     }
 
-    // 归一化后向量长度为 1，后续余弦相似度比较更稳定。
+
     cv::Mat normalizedFeature;
     cv::normalize(feature, normalizedFeature, 1.0, 0.0, cv::NORM_L2);
     return normalizedFeature.clone();
@@ -157,9 +154,8 @@ cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,
 
 float FaceRecognizer::cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2)
 {
-    if (feat1.empty() || feat2.empty()
-        || feat1.type() != CV_32F || feat2.type() != CV_32F
-        || feat1.total() != feat2.total()) {
+    if (feat1.empty() || feat2.empty()|| feat1.type() != CV_32F || feat2.type() != CV_32F|| feat1.total() != feat2.total())
+    {
         return 0.0f;
     }
 

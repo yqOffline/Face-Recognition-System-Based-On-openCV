@@ -16,19 +16,19 @@ struct FaceDetection //人脸识别检测单元
 
 class FaceRecognizer
 {
-public:
-    FaceRecognizer(const std::string &detectModelPath,const std::string &recogModelPath);//需要两个模型的路径：YuNet检测模型，SFace识别模型
-    ~FaceRecognizer();
+    public:
+        FaceRecognizer(const std::string &detectModelPath,const std::string &recogModelPath);//需要两个模型的路径：YuNet检测模型，SFace识别模型
+        ~FaceRecognizer();
 
-    std::vector<FaceDetection> detectFaces(const cv::Mat &frame);
+        std::vector<FaceDetection> detectFaces(const cv::Mat &frame);
 
-    cv::Mat extractFeature(const cv::Mat &frame, const FaceDetection &face, cv::Mat *alignedFaceOutput = nullptr);
+        cv::Mat extractFeature(const cv::Mat &frame, const FaceDetection &face, cv::Mat *alignedFaceOutput = nullptr);
 
-    static float cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2);
+        static float cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2);
 
-private:
-    cv::Ptr<cv::FaceDetectorYN> detector;
-    cv::Ptr<cv::FaceRecognizerSF> sface;
+    private:
+        cv::Ptr<cv::FaceDetectorYN> detector;
+        cv::Ptr<cv::FaceRecognizerSF> sface;
 };
 
 #endif

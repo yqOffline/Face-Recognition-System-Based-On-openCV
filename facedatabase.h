@@ -39,45 +39,34 @@ class FaceDatabase : public QObject
 {
     Q_OBJECT
 
-public:
-    explicit FaceDatabase(QObject *parent = nullptr);
-    ~FaceDatabase();
+    public:
+        explicit FaceDatabase(QObject *parent = nullptr);
+        ~FaceDatabase();
 
-    bool init(const QString &dbPath = "faces.db");
-    bool addPerson(const QString &personCode, const QString &name,
-                   const QString &department, int *newPersonId = nullptr);
-    bool updatePerson(int id, const QString &personCode, const QString &name,
-                      const QString &department);
-    bool deletePerson(int id);
+        bool init(const QString &dbPath = "faces.db");
+        bool addPerson(const QString &personCode, const QString &name,const QString &department, int *newPersonId = nullptr);
+        bool updatePerson(int id, const QString &personCode, const QString &name,const QString &department);
+        bool deletePerson(int id);
 
-    bool findPersonByCode(const QString &personCode, PersonInfo &person);
-    bool addFaceSample(int personId, const cv::Mat &embedding,
-                       const QString &imagePath = QString(),
-                       int *newSampleId = nullptr);
-    bool deleteFaceSample(int sampleId);
-    QVector<FaceSampleInfo> getFaceSamples(int personId);
-    bool addRecognitionLog(int personId, const QString &nameSnapshot,
-                           float similarity, const QString &snapshotPath,
-                           const QString &sourceType,
-                           int *newLogId = nullptr);
-    QVector<RecognitionLogInfo> getRecentRecognitionLogs(int limit = 200);
-    bool clearRecognitionLogs();
-    bool registerFaceSample(const QString &personCode, const QString &name,
-                            const QString &department, const cv::Mat &embedding,
-                            const QString &imagePath = QString(),
-                            int *personId = nullptr,
-                            bool *createdPerson = nullptr);
+        bool findPersonByCode(const QString &personCode, PersonInfo &person);
+        bool addFaceSample(int personId, const cv::Mat &embedding,const QString &imagePath = QString(),int *newSampleId = nullptr);
+        bool deleteFaceSample(int sampleId);
+        QVector<FaceSampleInfo> getFaceSamples(int personId);
+        bool addRecognitionLog(int personId, const QString &nameSnapshot,float similarity, const QString &snapshotPath,const QString &sourceType,int *newLogId = nullptr);
+        QVector<RecognitionLogInfo> getRecentRecognitionLogs(int limit = 200);
+        bool clearRecognitionLogs();
+        bool registerFaceSample(const QString &personCode, const QString &name,const QString &department, const cv::Mat &embedding,const QString &imagePath = QString(),int *personId = nullptr,bool *createdPerson = nullptr);
 
-    QVector<PersonInfo> getAllPersons();
-    QString lastError() const;
+        QVector<PersonInfo> getAllPersons();
+        QString lastError() const;
 
-private:
-    QSqlDatabase db;
-    QString errorMessage;
+    private:
+        QSqlDatabase db;
+        QString errorMessage;
 
-    void setError(const QString &message);
-    QByteArray matToBytes(const cv::Mat &mat) const;
-    cv::Mat bytesToEmbedding(const QByteArray &data) const;
+        void setError(const QString &message);
+        QByteArray matToBytes(const cv::Mat &mat) const;
+        cv::Mat bytesToEmbedding(const QByteArray &data) const;
 };
 
 #endif
