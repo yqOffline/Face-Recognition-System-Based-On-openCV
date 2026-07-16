@@ -4,17 +4,17 @@
 #include <stdexcept>
 #include <utility>
 
-namespace   //运用匿名命名空间，只对此文件可见
+namespace   //运用匿名命名空间，只对此文件可见，保存“宏”
 {
-constexpr int MaxDetectionDimension = 1280;
-constexpr int CloseUpDetectionDimension = 640;
-constexpr float PrimaryScoreThreshold = 0.9f;
-constexpr float ProfileScoreThreshold = 0.85f;
+    constexpr int MaxDetectionDimension = 1280;
+    constexpr int CloseUpDetectionDimension = 640;
+    constexpr float PrimaryScoreThreshold = 0.9f;
+    constexpr float ProfileScoreThreshold = 0.85f;
 }
 
 FaceRecognizer::FaceRecognizer(const std::string &detectModelPath,const std::string &recogModelPath)
 {
-    detector = cv::FaceDetectorYN::create(detectModelPath,"",cv::Size(320, 320),0.9f, 0.3f,  5000);
+    detector = cv::FaceDetectorYN::create(detectModelPath,"",cv::Size(320, 320),0.9f, 0.3f, 5000);
     sface = cv::FaceRecognizerSF::create(recogModelPath, "");
 
     if (detector.empty())
@@ -29,7 +29,9 @@ FaceRecognizer::FaceRecognizer(const std::string &detectModelPath,const std::str
 
 FaceRecognizer::~FaceRecognizer() {}
 
-std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
+//FaceDetection，人脸识别数据结构体
+//detections：人脸数据结构体的vector
+std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)//人脸检测
 {
     std::vector<FaceDetection> detections;
     if (frame.empty() || detector.empty())
@@ -49,9 +51,9 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
 
     const std::array<DetectionPass, 3> passes
     {{
-        {MaxDetectionDimension, PrimaryScoreThreshold},
-        {CloseUpDetectionDimension, PrimaryScoreThreshold},
-        {MaxDetectionDimension, ProfileScoreThreshold}
+        {MaxDetectionDimension, PrimaryScoreThreshold}, //普通图片高置信度检测
+        {CloseUpDetectionDimension, PrimaryScoreThreshold},  //打人脸缩小进入模型
+        {MaxDetectionDimension, ProfileScoreThreshold}//校准人脸方向
     }};
 
     for (const DetectionPass &pass : passes)
@@ -68,9 +70,9 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
             detectionFrame = frame;
         }
 
-        detector->setInputSize(detectionFrame.size());
-        detector->setScoreThreshold(pass.scoreThreshold);
-        detector->detect(detectionFrame, faces);
+        detector->setInputSize(detectionFrame.size());//检测器输入尺寸，匹配尺寸
+        detector->setScoreThreshold(pass.scoreThreshold);//本轮阈值
+        detector->detect(detectionFrame, faces);//检测并输出faces,人脸数*15个float
         if (!faces.empty())
         {
             break;
@@ -82,8 +84,8 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
         return detections;
     }
 
-    const cv::Rect imageBounds(0, 0, frame.cols, frame.rows);
-    for (int row = 0; row < faces.rows; ++row)
+    const cv::Rect imageBounds(0, 0, frame.cols, frame.rows);//恢复到原来大小，进入识别
+    for (int row = 0; row < faces.rows; ++row)//有多少个人脸
     {
         cv::Mat originalFaceData = faces.row(row).clone();
         if (detectionScale != 1.0f)
@@ -91,14 +93,14 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
             float *coordinates = originalFaceData.ptr<float>(0);
             for (int column = 0; column < 14; ++column)
             {
-                coordinates[column] /= detectionScale;
+                coordinates[column] /= detectionScale;//还原坐标
             }
         }
         const float *values = originalFaceData.ptr<float>(0);
 
         cv::Rect box(cvRound(values[0]),cvRound(values[1]),cvRound(values[2]), cvRound(values[3]));
-        box &= imageBounds;
-        if (box.empty())
+        box &= imageBounds;//构造人脸矩形框,cvround将浮点数变为整数,并通过&=取交集，防止ROI裁剪越界
+        if (box.empty())//交集为空，人脸无效
         {
             continue;
         }
@@ -117,18 +119,18 @@ std::vector<FaceDetection> FaceRecognizer::detectFaces(const cv::Mat &frame)
     return detections;
 }
 
-cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,const FaceDetection &face, cv::Mat *alignedFaceOutput)
+cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,const FaceDetection &face, cv::Mat *alignedFaceOutput)//对齐并提取特征
 {
     if (frame.empty() || face.faceData.empty() || sface.empty())
     {
         return {};
     }
-    if (face.faceData.rows != 1 || face.faceData.cols != 15
-        || face.faceData.type() != CV_32F) {
+    if (face.faceData.rows != 1 || face.faceData.cols != 15|| face.faceData.type() != CV_32F)
+    {
         return {};
     }
 
-    cv::Mat alignedFace;
+    cv::Mat alignedFace;//保存对齐后的人脸
     sface->alignCrop(frame, face.faceData, alignedFace);
     if (alignedFace.empty())
     {
@@ -152,7 +154,7 @@ cv::Mat FaceRecognizer::extractFeature(const cv::Mat &frame,const FaceDetection 
     return normalizedFeature.clone();
 }
 
-float FaceRecognizer::cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2)
+float FaceRecognizer::cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat2)//余弦相似度比较
 {
     if (feat1.empty() || feat2.empty()|| feat1.type() != CV_32F || feat2.type() != CV_32F|| feat1.total() != feat2.total())
     {
@@ -162,7 +164,6 @@ float FaceRecognizer::cosineSimilarity(const cv::Mat &feat1, const cv::Mat &feat
     double dot = feat1.dot(feat2);
     double norm1 = cv::norm(feat1);
     double norm2 = cv::norm(feat2);
-    if (norm1 == 0 || norm2 == 0)
-        return 0.0f;
+    if (norm1 == 0 || norm2 == 0)return 0.0f;
     return static_cast<float>(dot / (norm1 * norm2));
 }

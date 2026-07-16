@@ -66,7 +66,7 @@ bool FaceDatabase::init(const QString &dbPath)
         return false;
     }
 
-    // 已有数据库没有 image_path 字段时，进行不会丢失旧特征的增量升级。
+
     bool hasImagePath = false;
     if (!query.exec("PRAGMA table_info(face_samples)"))
     {

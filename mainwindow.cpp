@@ -1,5 +1,5 @@
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
+#include "ui_mainwindow.h"   //编译器会把mainwindow.ui转换成ui_mainwindow.h,因为Cmakelists中开启了AUTOUIC
 #include "facesamplestorage.h"
 #include "recognitionlogstorage.h"
 #include "personmanagerdialog.h"
@@ -27,7 +27,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 
-namespace
+namespace  //用匿名空间限制drawImageLabel，仅mainwindow.cpp内可见，用于在displayframe上绘制人脸识别框
 {
     void drawImageLabel(cv::Mat &image, const QString &text, const cv::Point &position)
     {
@@ -52,11 +52,11 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    setupModernUi();
+    setupModernUi(); //提供更多UI设计
 
     QString modelDir = QCoreApplication::applicationDirPath() + "/models/";
-    recognizer = new FaceRecognizer((modelDir + "face_detection_yunet_2023mar.onnx").toStdString(),(modelDir + "face_recognition_sface_2021dec.onnx").toStdString());
-    database = new FaceDatabase(this);
+    recognizer = new FaceRecognizer((modelDir + "face_detection_yunet_2023mar.onnx").toStdString(),(modelDir + "face_recognition_sface_2021dec.onnx").toStdString()); //创建人脸识别对象，必须手动析构！
+    database = new FaceDatabase(this); //创建数据库对象
     AppDataPaths::migrateLegacyData();
     if (!database->init(AppDataPaths::databasePath()))
     {
@@ -66,8 +66,8 @@ MainWindow::MainWindow(QWidget *parent)
     loadRecognitionLogs();
 
     timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &MainWindow::processFrame);
 
+    connect(timer, &QTimer::timeout, this, &MainWindow::processFrame);
     connect(ui->btnStartStop, &QPushButton::clicked, this, &MainWindow::onStartStop);
     connect(ui->btnLoadImage, &QPushButton::clicked, this, &MainWindow::onLoadImage);
     connect(ui->btnRegister, &QPushButton::clicked, this, &MainWindow::onRegister);
@@ -78,12 +78,12 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    if (cap.isOpened()) cap.release();
+    if (cap.isOpened()) cap.release();//释放摄像头，不过cap是cv::VideoCapture 类型的对象，不是指针！
     delete recognizer;
-    delete ui;
+    delete ui;//删除的是控件指针管理对象，而不是物理意义上的控件，物理空间有Qt对象树删除
 }
 
-void MainWindow::onStartStop()
+void MainWindow::onStartStop()  //摄像头与图片槽函数
 {
     if (!isCameraRunning)
     {
@@ -137,7 +137,7 @@ void MainWindow::onStartStop()
     }
 }
 
-void MainWindow::onLoadImage()
+void MainWindow::onLoadImage() //QFlieDialog选择图片
 {
     QString fileName = QFileDialog::getOpenFileName(this, "选择图片", "", "图片 (*.png *.jpg *.bmp)");
     if (fileName.isEmpty()) return;
@@ -418,7 +418,7 @@ void MainWindow::setupModernUi()
     statusBar()->showMessage(tr("系统就绪"));
 }
 
-void MainWindow::processFrame()
+void MainWindow::processFrame() //加工当前帧
 {
     if (isCameraRunning)
     {
@@ -498,7 +498,7 @@ void MainWindow::processFrame()
     displayImage(displayFrame);
 }
 
-QString MainWindow::recognizeFace(const cv::Mat &feature, float &maxSim,int &bestPersonId)
+QString MainWindow::recognizeFace(const cv::Mat &feature, float &maxSim,int &bestPersonId)//遍历personCache中每个人的embedding
 {
     maxSim = 0.0f;
     bestPersonId = -1;
@@ -524,7 +524,7 @@ QString MainWindow::recognizeFace(const cv::Mat &feature, float &maxSim,int &bes
     return bestName;
 }
 
-bool MainWindow::shouldAppendLog(int personId)
+bool MainWindow::shouldAppendLog(int personId)  //判断是否加入日志（5s限制）
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     const qint64 lastTime = lastLogTimes.value(personId, 0);
@@ -537,7 +537,7 @@ bool MainWindow::shouldAppendLog(int personId)
     return true;
 }
 
-void MainWindow::loadRecognitionLogs()
+void MainWindow::loadRecognitionLogs() //清空logList
 {
     ui->logList->clear();
     const QVector<RecognitionLogInfo> logs = database->getRecentRecognitionLogs(200);
@@ -547,7 +547,7 @@ void MainWindow::loadRecognitionLogs()
     }
 }
 
-void MainWindow::appendRecognitionLogItem(const RecognitionLogInfo &log)
+void MainWindow::appendRecognitionLogItem(const RecognitionLogInfo &log) //格式化时间、姓名等
 {
     const QString source = log.sourceType == "Camera" ? tr("摄像头") : tr("图片");
     const QString time = log.recognizedAt.size() >= 16? log.recognizedAt.mid(5, 11) : log.recognizedAt;
@@ -562,7 +562,7 @@ void MainWindow::appendRecognitionLogItem(const RecognitionLogInfo &log)
     }
 }
 
-void MainWindow::onLogDoubleClicked(QListWidgetItem *item)
+void MainWindow::onLogDoubleClicked(QListWidgetItem *item) //解析抓拍路径并加载QPixmap
 {
     if (!item)
     {
@@ -589,7 +589,7 @@ void MainWindow::onLogDoubleClicked(QListWidgetItem *item)
     dialog.exec();
 }
 
-void MainWindow::onClearLogs()
+void MainWindow::onClearLogs() //询问确认
 {
     if (ui->logList->count() == 0)
     {
@@ -608,7 +608,7 @@ void MainWindow::onClearLogs()
     lastLogTimes.clear();
 }
 
-void MainWindow::refreshPersonCache()
+void MainWindow::refreshPersonCache() //刷新内存
 {
     personCache = database->getAllPersons();
 }
@@ -617,11 +617,11 @@ void MainWindow::displayImage(const cv::Mat &mat)
 {
     cv::Mat rgb;
     cv::cvtColor(mat, rgb, cv::COLOR_BGR2RGB);
-    QImage qimg(rgb.data, rgb.cols, rgb.rows, rgb.step, QImage::Format_RGB888);
+    QImage qimg(rgb.data, rgb.cols, rgb.rows, rgb.step, QImage::Format_RGB888);  //QPixmap::fromImage()创建一个新对象，rgb和qimg共享内存，函数结束一同销毁
     ui->videoLabel->setPixmap(QPixmap::fromImage(qimg).scaled(ui->videoLabel->size(), Qt::KeepAspectRatio));
 }
 
-void MainWindow::onRegister()
+void MainWindow::onRegister()  //从currentFrame注册新人员或追加已有人源样本
 {
     if (currentFrame.empty())
     {
@@ -633,8 +633,7 @@ void MainWindow::onRegister()
     for (const auto &face : faces)
     {
         const cv::Rect &rect = face.box;
-        qDebug() << "  Rect:" << rect.x << rect.y << rect.width << rect.height
-                 << "confidence:" << face.confidence;
+        qDebug() << "  Rect:" << rect.x << rect.y << rect.width << rect.height<< "confidence:" << face.confidence;
     }
 
     if (faces.empty())
@@ -734,7 +733,7 @@ void MainWindow::onRegister()
     QMessageBox::information(this,tr("注册成功"),createdPerson? tr("人员“%1”注册成功，当前有1个人脸样本。").arg(name): tr("已为“%1”追加人脸样本，当前共有%2个样本。").arg(name).arg(updatedPerson.embeddings.size()));
 }
 
-void MainWindow::onManageDB()
+void MainWindow::onManageDB() //栈上创建PersonManagerDialog，并模态eec
 {
     PersonManagerDialog dialog(database, recognizer, this);
     dialog.exec();

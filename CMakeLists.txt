@@ -4,21 +4,15 @@ project(FaceRecognition6666 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# 源文件统一使用 UTF-8。Windows 下 MSVC 默认使用系统代码页，
-# 如果不明确指定，中文注释和界面文字可能被错误解析。
 if(MSVC)
     add_compile_options(/utf-8)
 endif()
 
-# 自动处理 Qt 的 MOC/UIC/RCC
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-
-# ---------- 查找 Qt6 ----------
 find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets Sql)
 
-# ---------- 查找 OpenCV ----------
 find_package(OpenCV 4.5 REQUIRED COMPONENTS
     core
     imgproc
@@ -27,8 +21,6 @@ find_package(OpenCV 4.5 REQUIRED COMPONENTS
     objdetect
 )
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
-
-# ---------- 源文件 ----------
 set(SOURCES
     main.cpp
     mainwindow.cpp
@@ -50,19 +42,16 @@ set(HEADERS
     appdatapaths.h
 )
 
-# ---------- UI 文件 ----------
 set(UI_FILES
     mainwindow.ui
 )
 
-# ---------- 可执行文件 ----------
 add_executable(${PROJECT_NAME}
     ${SOURCES}
     ${HEADERS}
     ${UI_FILES}
 )
 
-# ---------- 链接库 ----------
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -73,16 +62,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${OpenCV_INCLUDE_DIRS})
 
-# ---------- 自动化测试 ----------
-# 数据库测试不依赖任何外部图片，默认可以直接运行。
-# 人脸图片测试属于开发阶段的可选回归测试，只有显式开启并提供测试图片时才创建，
-# 因此正式项目的配置、编译和运行都不依赖 images 目录。
+#CTest自动测试
 include(CTest)
-option(ENABLE_FACE_IMAGE_TESTS
-       "Enable face detector/feature tests that require user-provided images"
-       OFF)
-set(FACE_TEST_IMAGES "" CACHE STRING
-    "Semicolon-separated face image paths used only by optional tests")
+option(ENABLE_FACE_IMAGE_TESTS "Enable face detector/feature tests that require user-provided images" OFF)
+set(FACE_TEST_IMAGES "" CACHE STRING "Semicolon-separated face image paths used only by optional tests")
 
 if(BUILD_TESTING)
     add_executable(face_database_test
@@ -109,9 +92,7 @@ if(BUILD_TESTING)
 
     if(ENABLE_FACE_IMAGE_TESTS)
         if(NOT FACE_TEST_IMAGES)
-            message(FATAL_ERROR
-                "ENABLE_FACE_IMAGE_TESTS is ON, but FACE_TEST_IMAGES is empty. "
-                "Pass one or more image paths with -DFACE_TEST_IMAGES=...")
+            message(FATAL_ERROR "ENABLE_FACE_IMAGE_TESTS is ON, but FACE_TEST_IMAGES is empty. ""Pass one or more image paths with -DFACE_TEST_IMAGES=...")
         endif()
 
         add_executable(face_detector_smoke_test
@@ -163,7 +144,7 @@ if(BUILD_TESTING)
     endif()
 endif()
 
-# ---------- 验证并复制只读模型资源 ----------
+
 set(FACE_MODEL_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/models/face_detection_yunet_2023mar.onnx"
     "${CMAKE_CURRENT_SOURCE_DIR}/models/face_recognition_sface_2021dec.onnx"
@@ -183,15 +164,11 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying model files to output directory"
 )
 
-# ---------- Windows 下部署 OpenCV 运行库 ----------
-# 不写死开发者电脑路径。标准 OpenCV Windows 包通常把 bin 放在
-# OpenCV_DIR 的相邻目录；非标准安装可通过 -DOpenCV_RUNTIME_DIR=... 指定。
-set(OpenCV_RUNTIME_DIR "" CACHE PATH
-    "Optional directory containing OpenCV runtime DLLs")
+#寻找opencv路径
+set(OpenCV_RUNTIME_DIR "" CACHE PATH "Optional directory containing OpenCV runtime DLLs")
 set(_opencv_runtime_dir "${OpenCV_RUNTIME_DIR}")
 if(WIN32 AND NOT _opencv_runtime_dir)
-    get_filename_component(_opencv_default_runtime_dir
-        "${OpenCV_DIR}/../bin" ABSOLUTE)
+    get_filename_component(_opencv_default_runtime_dir "${OpenCV_DIR}/../bin" ABSOLUTE)
     if(EXISTS "${_opencv_default_runtime_dir}")
         set(_opencv_runtime_dir "${_opencv_default_runtime_dir}")
     endif()

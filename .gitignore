@@ -1,11 +1,12 @@
 build/
 .qtcreator/
-.tests/
 .agents/
 .doc_work/
 deliverables/
 faces.db
 face_samples/
+diagram/
+facedatabase.h.autosave
 recognition_snapshots/
 ppt/
 .ppt_build/

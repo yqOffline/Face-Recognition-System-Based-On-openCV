@@ -8,10 +8,10 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    QTranslator qtTranslator;
+    QTranslator qtTranslator;  //Qt翻译软件，使程序更易懂
     if (qtTranslator.load("qtbase_zh_CN", QLibraryInfo::path(QLibraryInfo::TranslationsPath))) a.installTranslator(&qtTranslator);
-    QCoreApplication::setOrganizationName("SCU");
-    QCoreApplication::setApplicationName("FaceVision");
+   QCoreApplication::setOrganizationName("SCU"); //规定程序数据目录，增强可移植性(C:\Users\name\AppData\Local\SCU\FaceVision)
+   QCoreApplication::setApplicationName("FaceVision");//静态函数，不写a.set…
     try
     {
         MainWindow w;
